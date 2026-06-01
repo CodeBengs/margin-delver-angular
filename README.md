@@ -15,7 +15,7 @@ npm install -g @angular/cli
 Clone the project:
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/CodeBengs/margin-delver-angular.git
 ```
 
 Install dependencies:
@@ -73,4 +73,4 @@ npm run build
 
 Here are some related projects:
 
-- [Margin Delver Backend](../margin-delver)
+- [Margin Delver Backend](https://github.com/CodeBengs/margin-delver)
