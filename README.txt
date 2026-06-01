@@ -1,6 +1,3 @@
-# Margin Delver — Angular Frontend
-
-## Development Setup
 
 ### Prerequisites
 
