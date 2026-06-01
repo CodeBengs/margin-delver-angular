@@ -1,0 +1,64 @@
+<div class="app">
+  <aside class="sidebar" aria-label="Workspace navigation">
+    <a class="brand" routerLink="/">
+      <img class="brand-mark" src="assets/margin-delver-icon.png" alt="" />
+      <span class="brand-text">
+        <strong class="brand-name">Margin Delver</strong>
+        <small class="brand-sub">by Pinter Menabung</small>
+      </span>
+    </a>
+
+    <div class="nav-section">Workspace</div>
+    <nav class="nav-links">
+      <a class="nav-item" routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">
+        <img src="ds/icons/chart-bar-v.svg" alt="" />
+        <span>Dashboard</span>
+      </a>
+      <a class="nav-item" routerLink="/menu" routerLinkActive="active">
+        <img src="ds/icons/list.svg" alt="" />
+        <span>Menu & Margin</span>
+      </a>
+      <a class="nav-item" routerLink="/sales-upload" routerLinkActive="active">
+        <img src="ds/icons/data.svg" alt="" />
+        <span>Sales Analysis</span>
+      </a>
+    </nav>
+
+    <div class="nav-section reference">Reference</div>
+    <nav class="nav-links">
+      <a class="nav-item quiet" routerLink="/how-it-works" routerLinkActive="active">
+        <img src="ds/icons/document-report.svg" alt="" />
+        <span>How it works</span>
+      </a>
+      <a class="nav-item quiet" routerLink="/">
+        <img src="ds/icons/document-setting.svg" alt="" />
+        <span>Settings</span>
+      </a>
+    </nav>
+
+    <div class="session-card">
+      <strong>Session</strong>
+      <span>Local PoC</span>
+      <p>Data tersimpan di browser sampai backend Go aktif.</p>
+    </div>
+  </aside>
+
+  <section class="main">
+    <header class="topbar">
+      <nav class="crumbs" aria-label="Breadcrumb">
+        <span>Margin Delver</span>
+        <span class="sep">/</span>
+        <strong>{{ breadcrumb() }}</strong>
+      </nav>
+      <div class="topbar-spacer"></div>
+      <a routerLink="/menu" class="btn btn-ghost">Menu</a>
+      <a routerLink="/sales-upload" class="btn btn-primary">Analyse sales</a>
+    </header>
+
+    <main class="page-scroll">
+      <router-outlet />
+    </main>
+  </section>
+</div>
+
+

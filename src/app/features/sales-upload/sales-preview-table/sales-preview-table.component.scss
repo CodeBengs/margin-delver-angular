@@ -1,0 +1,43 @@
+.panel {
+  margin-top: 16px;
+  padding: 18px;
+  border: 1px solid #e1e5ea;
+  border-radius: 8px;
+  background: #fff;
+}
+
+h2 {
+  margin: 0 0 14px;
+  font-size: 18px;
+}
+
+dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+}
+
+div {
+  padding: 14px;
+  border: 1px solid #edf0f3;
+  border-radius: 8px;
+}
+
+dt {
+  color: #586474;
+  font-size: 13px;
+}
+
+dd {
+  margin: 6px 0 0;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+@media (max-width: 700px) {
+  dl {
+    grid-template-columns: 1fr;
+  }
+}
+

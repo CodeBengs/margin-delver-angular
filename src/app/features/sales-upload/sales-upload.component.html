@@ -1,0 +1,151 @@
+<section class="hero-band">
+  <div>
+    <a routerLink="/" class="back-link">Back to menu workspace</a>
+    <span class="eyebrow">Sales analysis</span>
+    <h2>Turn sales volume into menu action.</h2>
+    <p>Upload daily sales by menu item, calculate contribution, classify performance, and review AI-style operating suggestions.</p>
+  </div>
+  <div class="hero-actions">
+    <button type="button" class="secondary" (click)="refreshMenu()">Refresh menu</button>
+    <button type="button" class="primary" [disabled]="isLocked() || !salesLoaded()" (click)="analyse()">Analyse</button>
+  </div>
+</section>
+
+@if (message()) {
+  <div class="notice">{{ message() }}</div>
+}
+
+@if (isLocked()) {
+  <section class="locked-state">
+    <strong>Sales analysis is locked</strong>
+    <p>Set at least one menu item to ready in Menu & Margin. Ingredient costs must be complete before sales totals are trusted.</p>
+    <a routerLink="/" class="primary">Open menu workspace</a>
+  </section>
+} @else {
+  <section class="upload-grid">
+    <article class="panel drop-card">
+      <span class="eyebrow">Upload workbook</span>
+      <div class="drop-zone" role="button" tabindex="0" (click)="uploadSampleSales()" (keydown.enter)="uploadSampleSales()">
+        <strong>{{ salesLoaded() ? 'Sales workbook ready' : 'Drop sales spreadsheet here' }}</strong>
+        <span>Date column followed by menu item columns, max 31 date rows.</span>
+        <button type="button" class="secondary">Use sample sales</button>
+      </div>
+    </article>
+
+    <article class="panel expected-card">
+      <span class="eyebrow">Matched menu</span>
+      <h3>{{ readyItems().length }} ready items</h3>
+      <p>Columns are matched case-insensitively to the menu workspace. Missing menu columns are treated as zero units sold.</p>
+    </article>
+  </section>
+}
+
+@if (analysisResult(); as analysis) {
+  <section class="verdict-card" [ngClass]="analysis.summary.verdict">
+    <div>
+      <span class="eyebrow">Verdict</span>
+      <h3>{{ analysis.summary.verdict.replace('_', ' ') | titlecase }}</h3>
+      <p>{{ analysis.summary.verdict_summary }}</p>
+    </div>
+    <strong>{{ analysis.summary.overall_margin_pct | number:'1.0-1' }}%</strong>
+  </section>
+
+  <section class="stats-grid">
+    <article>
+      <span>Revenue</span>
+      <strong>{{ fmtIDR(analysis.summary.total_revenue_idr) }}</strong>
+    </article>
+    <article>
+      <span>Ingredient cost</span>
+      <strong>{{ fmtIDR(analysis.summary.total_cost_idr) }}</strong>
+    </article>
+    <article>
+      <span>Gross profit</span>
+      <strong>{{ fmtIDR(analysis.summary.total_gross_profit_idr) }}</strong>
+    </article>
+    <article>
+      <span>Period</span>
+      <strong>30 days</strong>
+    </article>
+  </section>
+
+  <section class="classification-strip">
+    <article class="star"><span>Star</span><strong>{{ classificationCounts().star }}</strong></article>
+    <article class="workhorse"><span>Workhorse</span><strong>{{ classificationCounts().workhorse }}</strong></article>
+    <article class="niche"><span>Niche</span><strong>{{ classificationCounts().niche }}</strong></article>
+    <article class="deadweight"><span>Deadweight</span><strong>{{ classificationCounts().deadweight }}</strong></article>
+  </section>
+
+  <section class="analysis-grid">
+    <article class="panel suggestions-panel">
+      <div class="section-head">
+        <div>
+          <span class="eyebrow">AI suggestions</span>
+          <h3>Operational moves</h3>
+        </div>
+      </div>
+      <div class="suggestion-list">
+        @for (suggestion of analysis.suggestions; track suggestion.title) {
+          <article class="suggestion-card">
+            <span>{{ suggestion.suggestion_type }}</span>
+            <h4>{{ suggestion.title }}</h4>
+            <p>{{ suggestion.description }}</p>
+            <small>{{ suggestion.estimated_impact }}</small>
+          </article>
+        } @empty {
+          <div class="empty-state">All analysed items look healthy for this sample.</div>
+        }
+      </div>
+    </article>
+
+    <article class="panel matrix-panel">
+      <span class="eyebrow">Margin x volume</span>
+      <div class="matrix">
+        @for (item of analysis.items; track trackByName($index, item)) {
+          <span [ngClass]="item.classification" [style.left.%]="item.margin_pct" [style.bottom.%]="item.units_sold / 5">
+            {{ item.menu_item.slice(0, 2).toUpperCase() }}
+          </span>
+        }
+      </div>
+    </article>
+  </section>
+
+  <section class="panel performance-panel">
+    <div class="section-head">
+      <div>
+        <span class="eyebrow">Per item performance</span>
+        <h3>Revenue, cost, and contribution</h3>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Menu item</th>
+            <th>Units</th>
+            <th>Revenue</th>
+            <th>Cost</th>
+            <th>Contribution</th>
+            <th>Margin</th>
+            <th>Class</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of analysis.items; track trackByName($index, item)) {
+            <tr>
+              <td><strong>{{ item.menu_item }}</strong></td>
+              <td>{{ item.units_sold | number }}</td>
+              <td>{{ fmtIDR(item.revenue_idr) }}</td>
+              <td>{{ fmtIDR(item.est_cost_idr) }}</td>
+              <td>{{ fmtIDR(item.contribution_idr) }}</td>
+              <td>{{ item.margin_pct | number:'1.0-1' }}%</td>
+              <td><span class="class-pill" [ngClass]="item.classification">{{ item.classification }}</span></td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+}
+
+

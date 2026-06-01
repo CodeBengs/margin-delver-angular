@@ -1,0 +1,20 @@
+@if (uploadResult) {
+  <section class="panel">
+    <h2>Sales Preview</h2>
+    <dl>
+      <div>
+        <dt>Period</dt>
+        <dd>{{ uploadResult.period_days }} days</dd>
+      </div>
+      <div>
+        <dt>Matched Items</dt>
+        <dd>{{ uploadResult.matched_item_count }}</dd>
+      </div>
+      <div>
+        <dt>Ignored Columns</dt>
+        <dd>{{ uploadResult.ignored_columns.length }}</dd>
+      </div>
+    </dl>
+  </section>
+}
+

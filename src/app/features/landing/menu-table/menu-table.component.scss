@@ -1,0 +1,39 @@
+.table-wrap {
+  overflow: auto;
+}
+
+table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 12px 10px;
+  border-bottom: 1px solid #edf0f3;
+  text-align: left;
+}
+
+th {
+  color: #586474;
+  font-size: 13px;
+}
+
+tbody tr {
+  cursor: pointer;
+}
+
+tbody tr:hover {
+  background: #f8fafb;
+}
+
+td span {
+  color: #7a8696;
+}
+
+.empty {
+  color: #7a8696;
+  text-align: center;
+}
+

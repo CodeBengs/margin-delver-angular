@@ -1,0 +1,30 @@
+@if (analysis) {
+  <section class="panel">
+    <header>
+      <h2>Profitability Summary</h2>
+      <app-status-badge [label]="analysis.summary.verdict" [tone]="analysis.summary.verdict === 'loss' ? 'danger' : 'success'" />
+    </header>
+
+    <p>{{ analysis.summary.verdict_summary }}</p>
+
+    <dl>
+      <div>
+        <dt>Total Revenue</dt>
+        <dd>{{ analysis.summary.total_revenue_idr | idrCurrency }}</dd>
+      </div>
+      <div>
+        <dt>Total Cost</dt>
+        <dd>{{ analysis.summary.total_cost_idr | idrCurrency }}</dd>
+      </div>
+      <div>
+        <dt>Gross Profit</dt>
+        <dd>{{ analysis.summary.total_gross_profit_idr | idrCurrency }}</dd>
+      </div>
+      <div>
+        <dt>Margin</dt>
+        <dd>{{ analysis.summary.overall_margin_pct }}%</dd>
+      </div>
+    </dl>
+  </section>
+}
+

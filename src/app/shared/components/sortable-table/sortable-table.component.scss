@@ -1,0 +1,44 @@
+.table-wrap {
+  overflow: auto;
+  border: 1px solid #e1e5ea;
+  border-radius: 8px;
+  background: #fff;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 560px;
+}
+
+th,
+td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #edf0f3;
+  text-align: left;
+}
+
+th {
+  background: #f8fafb;
+}
+
+th button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: transparent;
+  color: #344054;
+  font-weight: 700;
+}
+
+th span {
+  color: #7a8696;
+  font-size: 11px;
+}
+
+.empty {
+  color: #7a8696;
+  text-align: center;
+}
+

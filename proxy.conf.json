@@ -1,0 +1,8 @@
+{
+  "/internal/v1": {
+    "target": "http://localhost:3030",
+    "secure": false,
+    "changeOrigin": true,
+    "logLevel": "debug"
+  }
+}

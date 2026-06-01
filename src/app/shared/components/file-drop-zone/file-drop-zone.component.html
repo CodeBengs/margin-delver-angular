@@ -1,0 +1,13 @@
+<label
+  class="drop-zone"
+  [class.dragging]="isDragging"
+  (dragover)="onDragOver($event)"
+  (dragleave)="onDragLeave()"
+  (drop)="onDrop($event)"
+>
+  <input class="sr-only" type="file" [accept]="accept" (change)="onFileChange($event)" />
+  <span class="icon" aria-hidden="true">Upload</span>
+  <strong>{{ title }}</strong>
+  <span>{{ description }}</span>
+</label>
+

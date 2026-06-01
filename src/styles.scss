@@ -1,0 +1,413 @@
+/* Inlined design tokens from public/ds/colors_and_type.css for Sass compile. */
+/* ============================================================
+   PUJASERA Design System — Foundations
+   Colors, type, spacing, radius, elevation tokens
+   Source of truth: PUJASERA Foundations.fig + UI Kit Dashboard.fig
+   ============================================================ */
+
+/* ---- FONTS ----------------------------------------------- */
+/* Inter — brand font, loaded from local variable TTFs (opsz + wght axes). */
+/* Roboto stays on Google Fonts (used only for receipt-style printouts). */
+@font-face {
+  font-family: "Inter";
+  src: url("/ds/fonts/Inter-VariableFont_opsz_wght.ttf") format("truetype-variations");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("/ds/fonts/Inter-Italic-VariableFont_opsz_wght.ttf") format("truetype-variations");
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+@import url("https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap");
+
+:root {
+  /* ============================================================
+     COLOR — GLOBAL PALETTE (raw tokens)
+     ============================================================ */
+
+  /* PRIMARY — Pujasera Orange (brand mark / POSLite identity) */
+  --color-orange-50:  #FFF4E5;
+  --color-orange-100: #FFE0B8;
+  --color-orange-200: #FFCB8A;
+  --color-orange-300: #FFB55C;
+  --color-orange-400: #FF9F2E;
+  --color-orange-500: #EB7300;   /* PRIMARY — used as the 4-px accent rule, brand chrome */
+  --color-orange-600: #C05F00;
+  --color-orange-700: #8E4600;
+
+  /* SECONDARY — Pujasera Blue (ESO / system tone) */
+  --color-blue-50:  #EAF5FF;
+  --color-blue-100: #C3E2FB;
+  --color-blue-200: #9CD0F7;
+  --color-blue-300: #75BEF3;
+  --color-blue-400: #399FEF;
+  --color-blue-500: #1286E1;     /* SECONDARY — links, info, ESO surfaces */
+  --color-blue-600: #0F6CB6;
+  --color-blue-700: #0B548E;
+
+  /* SYSTEM — Success */
+  --color-success-50:  #E7F7EE;
+  --color-success-100: #B6E6C9;
+  --color-success-300: #4FBA7A;
+  --color-success-500: #16A953;  /* success */
+  --color-success-700: #0E7A3B;
+
+  /* SYSTEM — Danger */
+  --color-danger-50:  #FFE5E5;
+  --color-danger-100: #FFB5B5;
+  --color-danger-300: #FF6B6B;
+  --color-danger-500: #F70000;   /* danger */
+  --color-danger-700: #B30000;
+
+  /* SYSTEM — Warning */
+  --color-warning-50:  #FFF7E0;
+  --color-warning-100: #FFE2A1;
+  --color-warning-500: #F5A623;
+  --color-warning-700: #B47410;
+
+  /* SYSTEM — Info (uses blue-500 alias) */
+  --color-info-500:    #1286E1;
+
+  /* ACCENT — Purple (used sparingly for premium/ESB suite tags) */
+  --color-purple-100: #ECE9F1;
+  --color-purple-500: #9747FF;
+  --color-purple-900: #17192D;
+
+  /* NEUTRALS — Grey scale (the actual workhorse — see metadata: rgb(72,72,72) used 3073×) */
+  --color-white:    #FFFFFF;
+  --color-grey-50:  #F8F8F8;
+  --color-grey-75:  #F5F5F5;
+  --color-grey-100: #F2F2F2;
+  --color-grey-150: #ECECEC;
+  --color-grey-200: #E6E6E6;
+  --color-grey-300: #D9D9D9;
+  --color-grey-400: #C4C4C4;
+  --color-grey-450: #CFCFCF;
+  --color-grey-500: #A6A6A6;
+  --color-grey-550: #909090;
+  --color-grey-600: #6C6C6C;
+  --color-grey-700: #484848;     /* most-used text color */
+  --color-grey-800: #333333;     /* secondary text / heavy ink */
+  --color-grey-900: #000000;
+
+  /* SUPPORTING NEUTRALS (chrome / muted UI) */
+  --color-text-muted: #A2A3A5;
+  --color-text-meta:  #626F86;
+  --color-stroke-card:#ECE9F1;
+  --color-overlay-50: rgba(0,0,0,0.50);
+  --color-overlay-30: rgba(0,0,0,0.30);
+
+  /* ============================================================
+     COLOR — SEMANTIC ALIASES (use these in components)
+     ============================================================ */
+  --bg-page:        var(--color-grey-50);
+  --bg-surface:     var(--color-white);
+  --bg-subtle:      var(--color-grey-100);
+  --bg-muted:       var(--color-grey-150);
+  --bg-inverse:     var(--color-grey-900);
+
+  --fg-default:     var(--color-grey-700);   /* default body text */
+  --fg-strong:      var(--color-grey-800);   /* headings */
+  --fg-emphasis:    var(--color-grey-900);   /* numbers, key headings */
+  --fg-muted:       var(--color-grey-600);   /* meta, table sub-labels */
+  --fg-subtle:      var(--color-grey-550);   /* hints, placeholders */
+  --fg-disabled:    var(--color-grey-400);
+  --fg-on-primary:  var(--color-white);
+  --fg-on-dark:     var(--color-white);
+  --fg-link:        var(--color-blue-500);
+
+  --brand-primary:  var(--color-orange-500); /* Pujasera Orange */
+  --brand-secondary:var(--color-blue-500);   /* Pujasera Blue */
+
+  --border-default:  var(--color-grey-200);
+  --border-strong:   var(--color-grey-300);
+  --border-subtle:   var(--color-grey-150);
+  --border-focus:    var(--color-orange-500);
+  --border-input:    var(--color-grey-300);
+
+  --status-success: var(--color-success-500);
+  --status-danger:  var(--color-danger-500);
+  --status-warning: var(--color-warning-500);
+  --status-info:    var(--color-info-500);
+
+  /* ============================================================
+     TYPE
+     ============================================================ */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "Roboto Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --font-display: "Inter", "Gloock", serif; /* Gloock used 1× for a hero headline */
+
+  /* Type scale — Pujasera Figma "Font Size (Global)" tokens
+     Documented stops: 10 / 12 / 14 / 16 / 18 / 20 / 24 / 28 / 32 / 36 / 40 / 48
+     (No 56 — display headings cap at size-48.) */
+  --fs-size-48:     48px;   /* hero numbers / display */
+  --fs-size-40:     40px;   /* h1 */
+  --fs-size-36:     36px;
+  --fs-size-32:     32px;   /* h2 */
+  --fs-size-28:     28px;
+  --fs-size-24:     24px;   /* h3 / section title */
+  --fs-size-20:     20px;   /* h4 / sub-section */
+  --fs-size-18:     18px;   /* h5 / table head */
+  --fs-size-16:     16px;   /* body-lg */
+  --fs-size-14:     14px;   /* body */
+  --fs-size-12:     12px;   /* body-sm */
+  --fs-size-10:     10px;   /* caption */
+
+  /* Backwards-compatible role aliases */
+  --fs-display:     var(--fs-size-48);
+  --fs-h1:          var(--fs-size-40);
+  --fs-h2:          var(--fs-size-32);
+  --fs-h3:          var(--fs-size-24);
+  --fs-h4:          var(--fs-size-20);
+  --fs-h5:          var(--fs-size-18);
+  --fs-body-lg:     var(--fs-size-16);
+  --fs-body:        var(--fs-size-14);
+  --fs-body-sm:     var(--fs-size-12);
+  --fs-caption:     var(--fs-size-10);
+
+  /* Line height — Pujasera documents only two: 130% large, 150% body */
+  --lh-large:   1.3;    /* 130% — large/display text */
+  --lh-body:    1.5;    /* 150% — body text */
+  /* Legacy aliases */
+  --lh-tight:   1.2;
+  --lh-snug:    1.3;
+  --lh-normal:  1.4;
+  --lh-relaxed: 1.5;
+
+  /* Pujasera documents Medium / SemiBold / Bold as the system weights.
+     Regular is the baseline (used for body); Light is not part of the system. */
+  --fw-regular:  400;   /* baseline body */
+  --fw-medium:   500;   /* emphasize information */
+  --fw-semibold: 600;   /* heading, button */
+  --fw-bold:     700;   /* heading */
+
+  --letter-tight: -0.01em;
+  --letter-normal: 0;
+  --letter-wide:   0.02em;   /* used on table labels / uppercase tags */
+
+  /* ============================================================
+     SPACING (8-pt grid, with 2/4 supports)
+     ============================================================ */
+  --space-0:  0;
+  --space-1:  2px;
+  --space-2:  4px;
+  --space-3:  8px;
+  --space-4:  12px;
+  --space-5:  16px;
+  --space-6:  20px;
+  --space-7:  24px;
+  --space-8:  32px;
+  --space-9:  40px;
+  --space-10: 48px;
+  --space-11: 56px;
+  --space-12: 64px;
+  --space-13: 80px;
+
+  /* ============================================================
+     RADIUS
+     ============================================================ */
+  --radius-none: 0;
+  --radius-xs:   4px;
+  --radius-sm:   6px;
+  --radius-md:   8px;
+  --radius-lg:   12px;
+  --radius-xl:   20px;
+  --radius-2xl:  24px;
+  --radius-pill: 999px;
+
+  /* ============================================================
+     ELEVATION (subtle, single-shadow system — Pujasera doesn't stack)
+     ============================================================ */
+  --elevation-0: none;
+  --elevation-1: 0 1px 4px 0 rgba(51,51,51,0.10);   /* default card / table row */
+  --elevation-2: 0 2px 8px 0 rgba(51,51,51,0.10);   /* hover / dropdown */
+  --elevation-3: 0 8px 24px 0 rgba(50,50,71,0.08);  /* dialog / drawer */
+  --elevation-4: 0 16px 32px 0 rgba(50,50,71,0.10); /* modal sheet */
+
+  /* ============================================================
+     MOTION
+     ============================================================ */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-emphasis: cubic-bezier(0.2, 0, 0, 1);
+  --duration-fast:    120ms;
+  --duration-default: 200ms;
+  --duration-slow:    320ms;
+
+  /* ============================================================
+     LAYOUT
+     ============================================================ */
+  --layout-max:        1344px;
+  --layout-content:    1240px;
+  --sidebar-width:     264px;
+  --sidebar-collapsed: 76px;
+  --topbar-height:     64px;
+}
+
+/* ============================================================
+   SEMANTIC TYPE CLASSES
+   ============================================================ */
+.t-display { font: var(--fw-bold) var(--fs-display)/var(--lh-large) var(--font-display); letter-spacing: var(--letter-tight); color: var(--fg-emphasis); }
+.t-h1     { font: var(--fw-bold) var(--fs-h1)/var(--lh-large) var(--font-sans); letter-spacing: var(--letter-tight); color: var(--fg-emphasis); }
+.t-h2     { font: var(--fw-bold) var(--fs-h2)/var(--lh-large) var(--font-sans); color: var(--fg-emphasis); }
+.t-h3     { font: var(--fw-bold) var(--fs-h3)/var(--lh-large) var(--font-sans); color: var(--fg-strong); }
+.t-h4     { font: var(--fw-semibold) var(--fs-h4)/var(--lh-large) var(--font-sans); color: var(--fg-strong); }
+.t-h5     { font: var(--fw-semibold) var(--fs-h5)/var(--lh-large) var(--font-sans); color: var(--fg-strong); }
+
+.t-body-lg{ font: var(--fw-regular) var(--fs-body-lg)/var(--lh-body) var(--font-sans); color: var(--fg-default); }
+.t-body   { font: var(--fw-regular) var(--fs-body)/var(--lh-body) var(--font-sans); color: var(--fg-default); }
+.t-body-sm{ font: var(--fw-regular) var(--fs-body-sm)/var(--lh-body) var(--font-sans); color: var(--fg-default); }
+
+.t-label  { font: var(--fw-medium) var(--fs-body)/var(--lh-large) var(--font-sans); color: var(--fg-strong); }
+.t-caption{ font: var(--fw-regular) var(--fs-body-sm)/var(--lh-large) var(--font-sans); color: var(--fg-muted); }
+.t-meta   { font: var(--fw-medium) var(--fs-caption)/var(--lh-large) var(--font-sans); color: var(--fg-muted); letter-spacing: var(--letter-wide); text-transform: uppercase; }
+
+/* The 4-px orange section-header rule — a Pujasera signature */
+.pj-rule-heading {
+  display: flex; align-items: flex-end; gap: 12px;
+  padding-left: 0;
+  position: relative;
+}
+.pj-rule-heading::before {
+  content: ""; display: block;
+  width: 4px; height: 1em;
+  background: var(--brand-primary);
+  flex: 0 0 4px;
+}
+
+
+@font-face {
+  font-family: 'Inter';
+  src: url('/ds/fonts/Inter-VariableFont_opsz_wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Inter';
+  src: url('/ds/fonts/Inter-Italic-VariableFont_opsz_wght.ttf') format('truetype');
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+:root {
+  --sidebar-width: 264px;
+  --topbar-height: 62px;
+  color-scheme: light;
+  font-family: var(--font-sans, Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+  background: var(--bg-page, #f6f6f5);
+  color: var(--fg-default, #2c2f2e);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  min-height: 100%;
+  background: var(--bg-page, #f6f6f5);
+}
+
+body {
+  min-width: 320px;
+  font-family: var(--font-sans, Inter, ui-sans-serif, system-ui, sans-serif);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  overflow-wrap: anywhere;
+}
+
+.page {
+  max-width: 1440px;
+  padding: 32px 40px 60px;
+  display: flex;
+  flex-direction: column;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: var(--brand-primary, #eb7300);
+  color: #fff;
+}
+
+.btn-ghost {
+  border-color: var(--border-default, #ddd);
+  background: #fff;
+  color: var(--fg-strong, #222);
+}
+
+.eyebrow {
+  display: block;
+  color: var(--fg-muted, #666);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+
+
+

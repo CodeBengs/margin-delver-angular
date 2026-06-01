@@ -1,0 +1,110 @@
+﻿<section class="page how-page">
+  <header class="page-title-block">
+    <div class="title-rule"></div>
+    <div>
+      <h1>How Margin Delver works</h1>
+      <p>A quick walkthrough of the data flow, the AI prompts, and the classification logic - written for restaurant owners, not engineers.</p>
+    </div>
+  </header>
+
+  <section class="panel flow-panel">
+    <header class="panel-head">
+      <h2>The data flow</h2>
+      <span>PoC v0.4 - two-week build window</span>
+    </header>
+
+    <div class="flow">
+      @for (step of steps; track step.num) {
+        <article class="flow-step" [class.ai-step]="step.ai">
+          <div class="flow-rail">
+            <div class="flow-icon">
+              <img [src]="'ds/icons/' + step.icon + '.svg'" alt="" />
+            </div>
+          </div>
+          <div class="flow-content">
+            <div class="flow-meta">
+              <span class="flow-num">{{ step.num }}</span>
+              @if (step.ai) {
+                <span class="ai-badge">AI step</span>
+              }
+            </div>
+            <h3>{{ step.title }}</h3>
+            <p>{{ step.body }}</p>
+          </div>
+        </article>
+      }
+    </div>
+  </section>
+
+  <section class="panel class-panel">
+    <header class="class-head">
+      <h2>The 2x2 classification framework</h2>
+      <p>Thresholds are the median of your data - so the framework self-calibrates regardless of menu size or volume.</p>
+    </header>
+
+    <div class="class-grid">
+      @for (card of classifications; track card.key) {
+        <article class="class-card" [class]="card.key">
+          <div class="class-mark">{{ card.glyph }}</div>
+          <div>
+            <h3>{{ card.label }}</h3>
+            <p class="class-line">{{ card.line }}</p>
+            <p>{{ card.body }}</p>
+          </div>
+        </article>
+      }
+    </div>
+  </section>
+
+  <section class="panel prompt-panel">
+    <header class="panel-head">
+      <h2>What we ask Claude</h2>
+      <span>Strict JSON, no free-form prose</span>
+    </header>
+
+    <div class="prompt-grid">
+      @for (prompt of prompts; track prompt.num) {
+        <article class="prompt-block">
+          <div class="prompt-head">
+            <span class="prompt-num">{{ prompt.num }}</span>
+            <div>
+              <h3>{{ prompt.title }}</h3>
+              <p>{{ prompt.description }}</p>
+            </div>
+          </div>
+          <pre>{{ prompt.code }}</pre>
+        </article>
+      }
+    </div>
+  </section>
+
+  <section class="panel faq-panel">
+    <header class="panel-head">
+      <h2>Common owner questions</h2>
+      <span>Operational notes</span>
+    </header>
+
+    <div class="faq-list">
+      @for (faq of faqs; track faq.q; let i = $index) {
+        <article class="faq-item" [class.open]="openFaq() === i">
+          <button type="button" class="faq-question" (click)="toggleFaq(i)">
+            <span>{{ faq.q }}</span>
+            <img [src]="openFaq() === i ? 'ds/icons/chevron-up.svg' : 'ds/icons/chevron-down.svg'" alt="" />
+          </button>
+          @if (openFaq() === i) {
+            <p class="faq-answer">{{ faq.a }}</p>
+          }
+        </article>
+      }
+    </div>
+  </section>
+
+  <section class="howto-cta">
+    <div>
+      <p class="eyebrow">READY WHEN YOU ARE</p>
+      <h2>Start with your menu - or load the demo warung.</h2>
+    </div>
+    <a routerLink="/menu" class="primary-link">Go to Menu & Margin</a>
+  </section>
+</section>
+

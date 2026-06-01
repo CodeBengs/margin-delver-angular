@@ -1,0 +1,10 @@
+<app-file-drop-zone
+  title="Upload menu Excel"
+  description="Accepts .xlsx or .xls with Menu Name and Selling Price columns."
+  (fileSelected)="upload($event)"
+/>
+
+@if (message()) {
+  <p>{{ message() }}</p>
+}
+

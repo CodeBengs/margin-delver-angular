@@ -1,0 +1,32 @@
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        @for (column of columns; track column.key) {
+          <th>
+            <button type="button" (click)="sortBy(column.key)">
+              {{ column.label }}
+              @if (sortKey === column.key) {
+                <span>{{ sortDirection === 'asc' ? 'Asc' : 'Desc' }}</span>
+              }
+            </button>
+          </th>
+        }
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of sortedRows; track $index) {
+        <tr>
+          @for (column of columns; track column.key) {
+            <td>{{ row[column.key] }}</td>
+          }
+        </tr>
+      } @empty {
+        <tr>
+          <td class="empty" [attr.colspan]="columns.length || 1">No data yet.</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+

@@ -1,0 +1,41 @@
+.panel {
+  margin-top: 16px;
+  padding: 18px;
+  border: 1px solid #e1e5ea;
+  border-radius: 8px;
+  background: #fff;
+}
+
+h2 {
+  margin: 0 0 14px;
+  font-size: 18px;
+}
+
+.suggestion-list {
+  display: grid;
+  gap: 12px;
+}
+
+article {
+  padding: 14px;
+  border: 1px solid #edf0f3;
+  border-radius: 8px;
+}
+
+h3 {
+  margin: 10px 0 6px;
+  font-size: 17px;
+}
+
+p {
+  margin: 0;
+  color: #586474;
+}
+
+small {
+  display: block;
+  margin-top: 10px;
+  color: #14664d;
+  font-weight: 700;
+}
+
