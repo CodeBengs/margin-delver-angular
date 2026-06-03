@@ -1,182 +1,294 @@
-<section class="page menu-page">
-  <section class="page-head-card">
+<div class="page">
+
+  <!-- Page header -->
+  <div class="page-head">
     <div>
-      <span class="eyebrow">Menu workspace</span>
-      <h1>Build margin clarity before touching sales data.</h1>
-      <p>Upload menu, estimate ingredient cost, and refine each recipe until every item is ready for profitability analysis.</p>
+      <div class="page-title"><h1>Menu &amp; Margin</h1></div>
+      <div class="page-sub">Add your menu items and selling prices. We'll estimate ingredient cost and gross margin per item.</div>
     </div>
-    <div class="head-actions">
-      <button type="button" class="btn btn-ghost" (click)="loadDemo()">Load demo data</button>
-      <button type="button" class="btn btn-ghost" [disabled]="!menuItems().length" (click)="clearWorkspace()">Reset</button>
-      <button type="button" class="btn btn-primary" [disabled]="processing()" (click)="estimateMargins()">
-        {{ processing() ? 'Estimating...' : 'Estimate margins' }}
-      </button>
+    <div class="page-actions">
+      @if (hasMenu()) {
+        <button type="button" class="btn btn-ghost">
+          <img src="ds/icons/data-export.svg" alt="" width="16" height="16" /> Export .xlsx
+        </button>
+        @if (readyCount() > 0) {
+          <a routerLink="/sales-upload" class="btn btn-primary">
+            Upload sales <img src="ds/icons/arrow-right.svg" alt="" width="16" height="16" />
+          </a>
+        }
+      }
     </div>
-  </section>
+  </div>
 
-  @if (notice()) {
-    <div class="notice">{{ notice() }}</div>
+  <!-- Stats ribbon -->
+  @if (hasMenu()) {
+    <div class="ribbon">
+      <div class="ribbon-item">
+        <div class="ribbon-label">Items</div>
+        <div class="ribbon-num">{{ menuItems().length }}</div>
+      </div>
+      <div class="ribbon-sep"></div>
+      <div class="ribbon-item">
+        <div class="ribbon-label">Combined menu revenue (per unit sold)</div>
+        <div class="ribbon-num">{{ fmtIDR(totalRevenuePotential()) }}</div>
+      </div>
+      <div class="ribbon-sep"></div>
+      <div class="ribbon-item">
+        <div class="ribbon-label">Combined ingredient cost</div>
+        <div class="ribbon-num">{{ fmtIDR(totalCost()) }}</div>
+      </div>
+      <div class="ribbon-sep"></div>
+      <div class="ribbon-item">
+        <div class="ribbon-label">Avg gross margin</div>
+        <div class="ribbon-num ribbon-num-accent">{{ averageMargin() | number:'1.0-1' }}%</div>
+      </div>
+    </div>
   }
 
-  @if (menuItems().length) {
-    <section class="ribbon">
-      <div class="ribbon-item"><span>Items</span><strong>{{ menuItems().length }}</strong></div>
-      <div class="ribbon-sep"></div>
-      <div class="ribbon-item"><span>Combined menu revenue</span><strong>{{ fmtIDR(totalRevenuePotential()) }}</strong></div>
-      <div class="ribbon-sep"></div>
-      <div class="ribbon-item"><span>Ingredient cost</span><strong>{{ fmtIDR(totalCost()) }}</strong></div>
-      <div class="ribbon-sep"></div>
-      <div class="ribbon-item"><span>Avg gross margin</span><strong class="accent">{{ averageMargin() | number:'1.0-1' }}%</strong></div>
-    </section>
-  }
-
-  <section class="input-grid">
-    <article class="panel input-panel">
-      <div class="tabs" role="tablist" aria-label="Input mode">
+  <!-- Input panel -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="tabs">
         <button type="button" class="tab" [class.active]="activeTab() === 'upload'" (click)="setTab('upload')">
-          <img src="ds/icons/upload.svg" alt="" /> Upload Excel
+          <img src="ds/icons/upload.svg" alt="" width="16" height="16" /> Upload Excel
         </button>
         <button type="button" class="tab" [class.active]="activeTab() === 'manual'" (click)="setTab('manual')">
-          <img src="ds/icons/edit.svg" alt="" /> Enter manually
+          <img src="ds/icons/edit.svg" alt="" width="16" height="16" /> Enter manually
         </button>
       </div>
-
-      @if (activeTab() === 'upload') {
-        <div class="drop-zone" role="button" tabindex="0" (click)="simulateUpload()" (keydown.enter)="simulateUpload()">
-          <img src="ds/icons/upload.svg" alt="" />
-          <strong>Drop menu spreadsheet here</strong>
-          <span>Expected columns: Menu Name and Selling Price</span>
-          <button type="button" class="btn btn-ghost">Use sample upload</button>
-        </div>
-      } @else {
-        <form class="manual-form" (ngSubmit)="addManualItem()">
-          <label>
-            <span>Menu name</span>
-            <input name="menuName" [ngModel]="manualName()" (ngModelChange)="setManualName($event)" placeholder="Nasi Goreng Ayam" />
-          </label>
-          <label>
-            <span>Selling price</span>
-            <input name="sellingPrice" type="number" [ngModel]="manualPrice()" (ngModelChange)="setManualPrice($event)" placeholder="25000" />
-          </label>
-          <button type="submit" class="btn btn-primary">Add menu item</button>
-        </form>
-      }
-    </article>
-
-    <article class="panel next-panel">
-      <span class="eyebrow">Next step</span>
-      <h3>Sales analysis unlocks when at least one item is ready.</h3>
-      <p>{{ readyItems().length }} menu item ready for analysis.</p>
-      <a routerLink="/sales-upload" class="btn btn-primary" [class.disabled]="!readyItems().length">Upload sales</a>
-    </article>
-  </section>
-
-  <section class="panel menu-table-panel">
-    <div class="panel-head">
-      <h2>{{ menuItems().length ? menuItems().length + ' menu items' : 'No menu yet' }}</h2>
+      <div class="panel-head-right">
+        <a class="link"><img src="ds/icons/download.svg" alt="" width="14" height="14" /> Download template</a>
+      </div>
     </div>
 
-    @if (menuItems().length) {
-      <div class="table-wrap">
-        <table class="menu-table">
-          <thead>
-            <tr>
-              <th></th>
-              <th>Menu name</th>
-              <th>Selling price</th>
-              <th>Est. ingredient cost</th>
-              <th>Est. gross margin</th>
-              <th>Margin %</th>
-              <th>Status</th>
-              <th></th>
+    <div class="panel-body">
+      @if (activeTab() === 'upload') {
+        <div class="drop" [class.drop-over]="dragOver()"
+             (click)="simulateUpload()"
+             (dragover)="$event.preventDefault(); dragOver.set(true)"
+             (dragleave)="dragOver.set(false)"
+             (drop)="$event.preventDefault(); dragOver.set(false); simulateUpload()">
+          <div class="drop-glyph">
+            <img src="ds/icons/upload.svg" alt="" width="28" height="28" />
+          </div>
+          <div class="drop-title">Drop your menu Excel file here</div>
+          <div class="drop-sub">.xlsx or .xls · max 5MB · column 1 = Menu Name, column 2 = Selling Price (IDR)</div>
+          <div class="drop-cta">
+            <button type="button" class="btn btn-secondary" (click)="$event.stopPropagation()">
+              <img src="ds/icons/upload.svg" alt="" width="14" height="14" /> Browse files
+            </button>
+            <span class="drop-or">or</span>
+            <a class="link" (click)="$event.stopPropagation(); loadDemo()">Load demo warung data</a>
+          </div>
+        </div>
+      } @else {
+        <div class="manual-form">
+          <div class="manual-row">
+            <div class="field">
+              <label for="menuName">Menu name</label>
+              <input id="menuName" [ngModel]="manualName()" (ngModelChange)="setManualName($event)"
+                     placeholder="e.g. Nasi Goreng Spesial" (keydown.enter)="addManualItem()" />
+            </div>
+            <div class="field field-price">
+              <label for="sellPrice">Selling price (IDR)</label>
+              <input id="sellPrice" type="number" [ngModel]="manualPrice()" (ngModelChange)="setManualPrice($event)"
+                     placeholder="25000" (keydown.enter)="addManualItem()" />
+            </div>
+            <button type="button" class="btn btn-primary"
+                    [disabled]="!manualName().trim() || !manualPrice()"
+                    (click)="addManualItem()">
+              <img src="ds/icons/plus.svg" alt="" width="14" height="14" /> Add item
+            </button>
+          </div>
+          <div class="manual-hint">Items appear in the table below. Click any row to edit ingredients after estimation.</div>
+        </div>
+      }
+    </div>
+  </div>
+
+  <!-- Menu table -->
+  @if (hasMenu()) {
+    <div class="panel">
+      <div class="panel-head">
+        <div class="panel-title">{{ menuItems().length }} menu item{{ menuItems().length === 1 ? '' : 's' }}</div>
+        <div class="panel-head-right">
+          @if (hasPendingItems()) {
+            <button type="button" class="btn btn-primary" [disabled]="processing()" (click)="estimateMargins()">
+              <span style="font-size:14px;line-height:1">✦</span>
+              {{ processing() ? 'Estimating…' : 'Estimate margins' }}
+            </button>
+          }
+        </div>
+      </div>
+
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width:28px"></th>
+            <th>Menu name</th>
+            <th class="num-col">Selling price</th>
+            <th class="num-col">Est. ingredient cost</th>
+            <th class="num-col">Est. gross margin</th>
+            <th class="num-col" style="width:110px">Margin %</th>
+            <th style="width:120px">Status</th>
+            <th style="width:48px"></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (item of menuItems(); track item.id) {
+            <tr class="row-clickable"
+                [class.row-expanded]="isExpanded(item)"
+                [class.row-danger]="isDanger(item)"
+                (click)="selectItem(item)">
+              <td>
+                <img [src]="isExpanded(item) ? 'ds/icons/chevron-down.svg' : 'ds/icons/chevron-right.svg'"
+                     alt="" width="14" height="14" style="opacity:0.5;display:block" />
+              </td>
+              <td>
+                <div class="cell-name">
+                  <div class="item-thumb" [ngClass]="'thumb-' + iconForName(item.name)">
+                    <img [src]="'ds/icons/' + iconForName(item.name) + '.svg'" alt="" width="18" height="18" />
+                  </div>
+                  <div class="cell-name-text">{{ item.name }}</div>
+                </div>
+              </td>
+              <td class="num-col num">{{ fmtIDR(item.selling_price_idr) }}</td>
+              <td class="num-col num">{{ item.status === 'ready' ? fmtIDR(item.est_cost_idr) : '—' }}</td>
+              <td class="num-col num">{{ item.status === 'ready' ? fmtIDR(item.gross_margin_idr) : '—' }}</td>
+              <td class="num-col num">
+                @if (item.status === 'ready') {
+                  <span [class]="marginClass(item)">{{ item.gross_margin_pct ?? 0 | number:'1.0-1' }}%</span>
+                } @else { — }
+              </td>
+              <td>
+                @if (item.status === 'estimating') {
+                  <span class="badge badge-info">Estimating…</span>
+                } @else if (item.status === 'ready') {
+                  <span class="badge badge-success">Ready</span>
+                } @else if (item.status === 'unrecognised') {
+                  <span class="badge badge-warning">Unrecognised</span>
+                } @else {
+                  <span class="badge badge-neutral">Pending</span>
+                }
+              </td>
+              <td (click)="$event.stopPropagation()">
+                <button type="button" class="icon-btn-bare" title="Remove" (click)="openDeleteConfirm(item)">
+                  <img src="ds/icons/close.svg" alt="" width="12" height="12" />
+                </button>
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            @for (item of menuItems(); track trackById($index, item)) {
-              <tr class="menu-row" [class.selected]="isExpanded(item)" (click)="selectItem(item)">
-                <td><img class="row-icon" [class.expanded]="isExpanded(item)" [src]="isExpanded(item) ? 'ds/icons/chevron-down.svg' : 'ds/icons/chevron-right.svg'" alt="" /></td>
-                <td><strong>{{ item.name }}</strong></td>
-                <td>{{ fmtIDR(item.selling_price_idr) }}</td>
-                <td>{{ fmtIDR(item.est_cost_idr) }}</td>
-                <td>{{ fmtIDR(item.gross_margin_idr) }}</td>
-                <td><b [class]="marginClass(item)">{{ item.gross_margin_pct ?? 0 | number:'1.0-1' }}%</b></td>
-                <td><span class="status-pill" [ngClass]="item.status">{{ item.status }}</span></td>
-                <td><button type="button" class="icon-button" aria-label="Delete menu item" (click)="$event.stopPropagation(); deleteItem(item)"><img src="ds/icons/close.svg" alt="" /></button></td>
-              </tr>
 
-              @if (isExpanded(item)) {
-                <tr class="detail-row">
-                  <td colspan="8">
-                    <section class="recipe-card">
-                      <header class="recipe-head">
+            @if (isExpanded(item)) {
+              <tr class="row-detail">
+                <td colspan="8">
+                  <div class="ingredient-panel">
+                    <div class="ingredient-head">
+                      <div>
+                        <div class="ingredient-eyebrow">AI-estimated recipe</div>
+                        <div class="ingredient-title">{{ item.name }}</div>
+                      </div>
+                      <div class="ingredient-summary">
                         <div>
-                          <span class="eyebrow">AI-estimated recipe</span>
-                          <h3>{{ item.name }}</h3>
+                          <div class="ingredient-summary-label">Total ingredient cost</div>
+                          <div class="ingredient-summary-num">{{ fmtIDR(item.est_cost_idr) }}</div>
                         </div>
-                        <div class="recipe-summary">
-                          <div><span>Total ingredient cost</span><strong>{{ fmtIDR(item.est_cost_idr) }}</strong></div>
-                          <div class="summary-sep"></div>
-                          <div><span>Gross margin</span><strong>{{ fmtIDR(item.gross_margin_idr) }}</strong><small>{{ item.gross_margin_pct ?? 0 | number:'1.0-1' }}%</small></div>
+                        <div class="ingredient-summary-sep"></div>
+                        <div>
+                          <div class="ingredient-summary-label">Gross margin</div>
+                          <div class="ingredient-summary-num" [class]="marginClass(item)">
+                            {{ fmtIDR(item.gross_margin_idr) }}<span class="ingredient-summary-pct">{{ item.gross_margin_pct ?? 0 | number:'1.0-1' }}%</span>
+                          </div>
                         </div>
-                      </header>
-
-                      <div class="edit-hint">
-                        <img src="ds/icons/edit.svg" alt="" />
-                        <span><strong>Fields with a box are editable</strong> � click any ingredient name, quantity, unit, or unit cost to adjust it. Margin recalculates instantly. Total cost is calculated automatically.</span>
                       </div>
+                    </div>
 
-                      <div class="ingredient-table-wrap">
-                        <table class="ingredient-table">
-                          <thead>
-                            <tr>
-                              <th>Ingredient</th>
-                              <th>Quantity</th>
-                              <th>Unit</th>
-                              <th>Unit cost (IDR)</th>
-                              <th>Total cost <small>Auto</small></th>
-                              <th></th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            @for (ingredient of item.ingredients; track trackById($index, ingredient)) {
-                              <tr>
-                                <td><input [ngModel]="ingredient.name" (ngModelChange)="updateIngredient(item, ingredient, 'name', $event)" /></td>
-                                <td><input type="number" [ngModel]="ingredient.quantity" (ngModelChange)="updateIngredient(item, ingredient, 'quantity', $event)" /></td>
-                                <td>
-                                  <select [ngModel]="ingredient.unit" (ngModelChange)="updateIngredient(item, ingredient, 'unit', $event)">
-                                    @for (unit of units; track unit) {
-                                      <option [value]="unit">{{ unit }}</option>
-                                    }
-                                  </select>
-                                </td>
-                                <td><input type="number" [ngModel]="ingredient.unit_cost_idr" (ngModelChange)="updateIngredient(item, ingredient, 'unit_cost_idr', $event)" /></td>
-                                <td class="total-cell">{{ fmtIDR(ingredient.total_cost_idr) }}</td>
-                                <td><button type="button" class="icon-button" aria-label="Remove ingredient" (click)="removeIngredient(item, ingredient.id)"><img src="ds/icons/close.svg" alt="" /></button></td>
-                              </tr>
-                            } @empty {
-                              <tr><td colspan="6" class="empty-cell">No ingredient rows yet.</td></tr>
-                            }
-                          </tbody>
-                        </table>
-                      </div>
+                    <div class="ingredient-hint">
+                      <img src="ds/icons/edit.svg" alt="" width="14" height="14" />
+                      <span>
+                        <strong>Fields with a box are editable</strong> — click any ingredient name, quantity, unit, or unit cost to adjust it.
+                        Margin recalculates instantly. <span class="ingredient-hint-calc">Total cost</span> is calculated automatically.
+                      </span>
+                    </div>
 
-                      <footer class="recipe-foot">
-                        <button type="button" class="btn btn-ghost" (click)="addIngredient(item)">Add ingredient</button>
-                      </footer>
-                    </section>
-                  </td>
-                </tr>
-              }
+                    <table class="ingredient-table">
+                      <thead>
+                        <tr>
+                          <th><span class="th-editable"><img src="ds/icons/edit.svg" alt="" width="11" height="11" /> Ingredient</span></th>
+                          <th class="num-col"><span class="th-editable"><img src="ds/icons/edit.svg" alt="" width="11" height="11" /> Quantity</span></th>
+                          <th><span class="th-editable"><img src="ds/icons/edit.svg" alt="" width="11" height="11" /> Unit</span></th>
+                          <th class="num-col"><span class="th-editable"><img src="ds/icons/edit.svg" alt="" width="11" height="11" /> Unit cost (IDR)</span></th>
+                          <th class="num-col"><span class="th-calc">Total cost <span class="th-calc-tag">auto</span></span></th>
+                          <th style="width:36px"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (ing of item.ingredients; track ing.id; let idx = $index) {
+                          <tr>
+                            <td><input class="cell-input" placeholder="Ingredient name" [ngModel]="ing.name" (ngModelChange)="updateIngredient(item, ing, 'name', $event)" /></td>
+                            <td class="num-col"><input class="cell-input cell-input-num" type="number" [ngModel]="ing.quantity" (ngModelChange)="updateIngredient(item, ing, 'quantity', $event)" /></td>
+                            <td><input class="cell-input cell-input-unit" [ngModel]="ing.unit" (ngModelChange)="updateIngredient(item, ing, 'unit', $event)" /></td>
+                            <td class="num-col"><input class="cell-input cell-input-num" type="number" [ngModel]="ing.unit_cost_idr" (ngModelChange)="updateIngredient(item, ing, 'unit_cost_idr', $event)" /></td>
+                            <td class="num-col cell-calc">{{ fmtIDR(ing.total_cost_idr) }}</td>
+                            <td>
+                              <button type="button" class="icon-btn-bare" title="Remove ingredient" (click)="openIngDeleteConfirm(item, idx)">
+                                <img src="ds/icons/close.svg" alt="" width="12" height="12" />
+                              </button>
+                            </td>
+                          </tr>
+                        } @empty {
+                          <tr><td colspan="6" class="empty-row">No ingredients yet. Add at least one to calculate margin.</td></tr>
+                        }
+                      </tbody>
+                    </table>
+
+                    <div class="ingredient-foot">
+                      <button type="button" class="link-button" (click)="addIngredient(item)">
+                        <img src="ds/icons/plus.svg" alt="" width="12" height="12" /> Add ingredient
+                      </button>
+                      <div class="ingredient-foot-note">Edits recalculate margin instantly. Unit costs come from the built-in IDR reference list.</div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
             }
-          </tbody>
-        </table>
-      </div>
-    } @else {
-      <div class="empty-state">
-        <strong>Start with a menu list</strong>
-        <p>Use the sample upload or add items manually. The expanded recipe editor will appear directly under the selected menu item.</p>
-      </div>
-    }
-  </section>
-</section>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
 
+  <!-- Confirm delete menu item -->
+  @if (confirmDeleteItem()) {
+    <div class="modal-overlay" (click)="cancelDelete()">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-title">Delete this menu item?</div>
+        <div class="modal-message">
+          This removes the item and its estimated recipe from your workspace. You can't undo this. Deleting:
+          <span class="modal-highlight">{{ confirmDeleteItem()!.name }}</span>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" (click)="cancelDelete()">Cancel</button>
+          <button type="button" class="btn btn-danger" (click)="confirmDelete()">Delete item</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Confirm delete ingredient -->
+  @if (confirmDeleteIngredient()) {
+    <div class="modal-overlay" (click)="cancelIngDelete()">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-title">Remove this ingredient?</div>
+        <div class="modal-message">
+          It will be taken out of the recipe and the item's margin will recalculate. Removing:
+          <span class="modal-highlight">{{ ingDeleteName() }}</span>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" (click)="cancelIngDelete()">Cancel</button>
+          <button type="button" class="btn btn-danger" (click)="confirmIngDelete()">Remove</button>
+        </div>
+      </div>
+    </div>
+  }
+
+</div>

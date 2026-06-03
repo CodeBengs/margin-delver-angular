@@ -1,109 +1,143 @@
-﻿<section class="page settings-page">
-  <header class="settings-hero">
-    <div class="title-rule"></div>
-    <div class="settings-title">
-      <h1>Settings</h1>
-      <p>Connect your Anthropic API key so Margin Delver can estimate recipes and generate analysis.</p>
-      <p>The key is stored only in this browser.</p>
-    </div>
-    <span class="connection-pill" [class.connected]="connected()">
-      <span class="dot"></span>
-      {{ connected() ? 'Connected' : 'Not connected' }}
-    </span>
-  </header>
+<div class="page settings-page">
 
-  <section class="settings-stack">
-    <article class="panel key-panel">
-      <header class="card-head">
-        <div class="card-icon">
-          <img src="ds/icons/lock-circle.svg" alt="" />
+  <div class="page-head">
+    <div>
+      <div class="page-title"><h1>Settings</h1></div>
+      <div class="page-sub">
+        Connect your Anthropic API key so Margin Delver can estimate recipes and
+        generate analysis. The key is stored only in this browser.
+      </div>
+    </div>
+    <div class="page-actions">
+      <span class="conn-badge" [class.conn-on]="connected()" [class.conn-off]="!connected()">
+        <span class="conn-dot"></span>
+        {{ connected() ? 'Connected' : 'Not connected' }}
+      </span>
+    </div>
+  </div>
+
+  <!-- API Key panel -->
+  <div class="panel set-panel">
+    <div class="panel-head">
+      <div class="set-head">
+        <div class="set-head-ico">
+          <img src="ds/icons/lock-circle.svg" alt="" width="20" height="20" />
         </div>
         <div>
-          <h2>Claude API key</h2>
-          <p>Anthropic key, used for recipe enrichment and sales analysis.</p>
+          <div class="panel-title">Claude API key</div>
+          <div class="panel-sub">Anthropic key, used for recipe enrichment and sales analysis.</div>
         </div>
-      </header>
-
-      <div class="card-body">
-        <label class="field-label" for="claude-key">Secret key</label>
-        <div class="secret-field">
-          <img class="field-leading" src="ds/icons/lock-circle.svg" alt="" />
+      </div>
+    </div>
+    <div class="panel-body set-body">
+      <div class="field">
+        <label for="apikey">Secret key</label>
+        <div class="key-input" [class.key-focused]="false">
+          <img src="ds/icons/lock-circle.svg" alt="" width="16" height="16" />
           <input
-            id="claude-key"
+            id="apikey"
             [type]="showKey() ? 'text' : 'password'"
-            [value]="showKey() ? apiKey() : maskedKey()"
-            (input)="updateApiKey($any($event.target).value)"
-            placeholder="sk-ant-api03-..."
+            placeholder="sk-ant-api03-…"
+            [value]="draftKey()"
+            (input)="updateDraftKey($any($event.target).value)"
+            spellcheck="false"
+            autocomplete="off"
           />
-          <button type="button" class="icon-button" (click)="toggleKeyVisibility()" aria-label="Toggle key visibility">
-            <img [src]="showKey() ? 'ds/icons/eye-closed.svg' : 'ds/icons/eye-open.svg'" alt="" />
+          <button type="button" class="key-eye" (click)="toggleKeyVisibility()" [title]="showKey() ? 'Hide' : 'Show'">
+            <img [src]="showKey() ? 'ds/icons/eye-closed.svg' : 'ds/icons/eye-open.svg'" alt="" width="16" height="16" />
           </button>
         </div>
-
-        <div class="key-help-row">
-          <p>Paste the key that starts with <code>sk-ant-</code>.</p>
-          <a href="https://console.anthropic.com" target="_blank" rel="noreferrer">
-            <img src="ds/icons/link.svg" alt="" />
-            Get a key from the Anthropic console
+        <div class="field-foot">
+          @if (draftKey().trim() === '') {
+            <span class="field-hint">Paste the key that starts with <code>sk-ant-</code>.</span>
+          } @else if (keyLooksValid()) {
+            <span class="field-hint field-hint-ok">
+              <img src="ds/icons/check.svg" alt="" width="12" height="12" /> Format looks valid.
+            </span>
+          } @else {
+            <span class="field-hint field-hint-warn">
+              Key should start with <code>sk-ant-</code>.
+            </span>
+          }
+          <a class="link" href="https://console.anthropic.com/settings/keys" target="_blank" rel="noreferrer">
+            <img src="ds/icons/link.svg" alt="" width="13" height="13" /> Get a key from the Anthropic console
           </a>
         </div>
+      </div>
 
-        <div class="action-row">
-          @if (apiKey()) {
-            <button type="button" class="text-danger" (click)="clearKey()">Clear key</button>
+      <div class="set-actions">
+        <div class="set-actions-left">
+          @if (connected()) {
+            <span class="key-stored">
+              <img src="ds/icons/check.svg" alt="" width="13" height="13" /> Saved key <code>{{ maskedPreview() }}</code>
+            </span>
           }
-          <button type="button" class="save-button" [disabled]="!connected()" (click)="saveKey()">
-            <img src="ds/icons/download.svg" alt="" />
-            Save key
+        </div>
+        <div class="set-actions-right">
+          @if (connected()) {
+            <button type="button" class="btn btn-ghost" (click)="removeKey()">Remove key</button>
+          }
+          <button type="button" class="btn btn-primary" [disabled]="!canSave()" (click)="saveKey()">
+            <img src="ds/icons/save.svg" alt="" width="16" height="16" />
+            {{ savedFlash() ? 'Saved' : 'Save key' }}
           </button>
         </div>
-        @if (saved()) {
-          <p class="saved-note">Key saved in this browser.</p>
-        }
       </div>
-    </article>
+    </div>
+  </div>
 
-    <article class="panel model-panel">
-      <header class="card-head">
-        <div class="card-icon">
-          <img src="ds/icons/document-setting.svg" alt="" />
+  <!-- Model & limits panel -->
+  <div class="panel set-panel">
+    <div class="panel-head">
+      <div class="set-head">
+        <div class="set-head-ico">
+          <img src="ds/icons/document-setting.svg" alt="" width="20" height="20" />
         </div>
         <div>
-          <h2>Model & limits</h2>
-          <p>Which model to call and how much to send per request.</p>
-        </div>
-      </header>
-
-      <div class="setting-row">
-        <div>
-          <h3>Model</h3>
-          <p>Used for both recipe enrichment and sales analysis.</p>
-        </div>
-        <select [value]="model()" (change)="updateModel($any($event.target).value)">
-          <option value="claude-3-5-sonnet-latest">Claude Sonnet 4.5 - recommended</option>
-          <option value="claude-3-5-haiku-latest">Claude Haiku - faster draft</option>
-        </select>
-      </div>
-
-      <div class="setting-row">
-        <div>
-          <h3>Max menu items per estimate</h3>
-          <p>Fixed for this PoC - larger batches arrive in a later release.</p>
-        </div>
-        <div class="fixed-value">
-          <strong>20 items</strong>
-          <span>Fixed</span>
+          <div class="panel-title">Model & limits</div>
+          <div class="panel-sub">Which model to call and how much to send per request.</div>
         </div>
       </div>
-    </article>
+    </div>
+    <div class="panel-body set-body">
+      <div class="set-row">
+        <div class="set-row-text">
+          <div class="set-row-label">Model</div>
+          <div class="set-row-desc">Used for both recipe enrichment and sales analysis.</div>
+        </div>
+        <div class="select-wrap">
+          <select [value]="model()" (change)="updateModel($any($event.target).value)">
+            <option value="claude-sonnet-4-5">Claude Sonnet 4.5 — recommended</option>
+            <option value="claude-opus-4-1">Claude Opus 4.1 — highest quality</option>
+            <option value="claude-haiku-4-5">Claude Haiku 4.5 — fastest / cheapest</option>
+          </select>
+          <img src="ds/icons/chevron-down.svg" alt="" width="14" height="14" />
+        </div>
+      </div>
 
-    <article class="notice-panel">
-      <img src="ds/icons/lock-circle.svg" alt="" />
-      <p>
-        <strong>Your key stays on this device.</strong>
-        It's saved to this browser's local storage only - never sent to ESB servers, never shared between sessions on other machines.
-        Remove it any time, and clear it before handing off a shared computer.
-      </p>
-    </article>
-  </section>
-</section>
+      <div class="set-divider"></div>
+
+      <div class="set-row">
+        <div class="set-row-text">
+          <div class="set-row-label">Max menu items per estimate</div>
+          <div class="set-row-desc">Fixed for this PoC — larger batches arrive in a later release.</div>
+        </div>
+        <div class="set-readonly">
+          20 items
+          <span class="set-readonly-tag">Fixed</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Security note -->
+  <div class="set-note">
+    <img src="ds/icons/lock-circle.svg" alt="" width="16" height="16" />
+    <div>
+      <strong>Your key stays on this device.</strong> It's saved to this browser's local
+      storage only — never sent to ESB servers, never shared between sessions on other
+      machines. Remove it any time, and clear it before handing off a shared computer.
+    </div>
+  </div>
+
+</div>

@@ -1,7 +1,8 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, OnDestroy, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
+import { DEMO_MENU, DEMO_SALES, DEMO_SUGGESTIONS } from '../../core/demo-data';
 import { AiSuggestion, ItemClassification, ProfitabilityAnalysisResult, ProfitabilityItem } from '../../core/models/profitability.model';
 
 interface StoredMenuItem {
@@ -13,7 +14,58 @@ interface StoredMenuItem {
   status: string;
 }
 
+interface MatrixDot {
+  name: string;
+  left: number;
+  top: number;
+  color: string;
+  classification: ItemClassification;
+}
+
+interface RevCostRow {
+  name: string;
+  revenue: number;
+  cost: number;
+  widthRevPct: number;
+  widthCostPct: number;
+}
+
 const MENU_STORAGE_KEY = 'md_angular_menu_v1';
+
+const CLASS_COLOR: Record<ItemClassification, string> = {
+  star:       'var(--color-success-500, #16a953)',
+  workhorse:  'var(--color-blue-600, #0f6cb6)',
+  niche:      'var(--color-warning-700, #b47410)',
+  deadweight: 'var(--color-danger-700, #b30000)'
+};
+const CLASS_BG: Record<ItemClassification, string> = {
+  star:       'var(--color-success-50, #e7f7ee)',
+  workhorse:  'var(--color-blue-50, #eaf5ff)',
+  niche:      'var(--color-warning-50, #fff7e0)',
+  deadweight: 'var(--color-danger-50, #ffe5e5)'
+};
+const CLASS_GLYPH:  Record<ItemClassification, string> = { star: '★', workhorse: '⚙', niche: '◆', deadweight: '✕' };
+const CLASS_LABEL:  Record<ItemClassification, string> = { star: 'Star', workhorse: 'Workhorse', niche: 'Niche', deadweight: 'Deadweight' };
+const CLASS_LINE:   Record<ItemClassification, string> = {
+  star: 'High margin · High volume', workhorse: 'Low margin · High volume',
+  niche: 'High margin · Low volume', deadweight: 'Low margin · Low volume'
+};
+
+/* Matches design's SUGGESTION_META tones exactly */
+const SUGGESTION_TONE: Record<string, string> = {
+  bundle:          'blue',
+  promote:         'green',
+  ingredient_swap: 'orange',
+  sunset:          'red',
+  reprice:         'purple',
+};
+const SUGGESTION_LABEL: Record<string, string> = {
+  bundle:          'Bundle',
+  promote:         'Promote',
+  ingredient_swap: 'Ingredient swap',
+  sunset:          'Sunset',
+  reprice:         'Reprice',
+};
 
 @Component({
   selector: 'app-sales-upload',
@@ -22,153 +74,198 @@ const MENU_STORAGE_KEY = 'md_angular_menu_v1';
   templateUrl: './sales-upload.component.html',
   styleUrl: './sales-upload.component.scss'
 })
-export class SalesUploadComponent {
+export class SalesUploadComponent implements OnInit, OnDestroy {
+  private readonly demoListener = () => {
+    this.menuItems.set(this.loadMenuItems());
+  };
   readonly message = signal('');
-  readonly salesLoaded = signal(false);
+  readonly analyzing = signal(false);
+  readonly dragOver = signal(false);
   readonly analysisResult = signal<ProfitabilityAnalysisResult | null>(null);
   readonly menuItems = signal<StoredMenuItem[]>(this.loadMenuItems());
+  readonly expandedSugId = signal<number>(0);
+  readonly dismissedIds = signal<number[]>([]);
 
-  readonly readyItems = computed(() => this.menuItems().filter((item) => item.status === 'ready' && item.est_cost_idr !== null));
+  readonly readyItems = computed(() => this.menuItems().filter((i) => i.status === 'ready' && i.est_cost_idr !== null));
   readonly isLocked = computed(() => this.readyItems().length === 0);
+  readonly hasSales = computed(() => this.analysisResult() !== null);
+
   readonly classificationCounts = computed(() => {
     const counts: Record<ItemClassification, number> = { star: 0, workhorse: 0, niche: 0, deadweight: 0 };
     for (const item of this.analysisResult()?.items ?? []) counts[item.classification] += 1;
     return counts;
   });
 
+  readonly totalUnits = computed(() =>
+    this.analysisResult()?.items.reduce((s, i) => s + i.units_sold, 0) ?? 0
+  );
+
+  readonly matrixDots = computed((): MatrixDot[] => {
+    const items = this.analysisResult()?.items ?? [];
+    if (!items.length) return [];
+    const margins  = items.map((i) => i.margin_pct);
+    const units    = items.map((i) => i.units_sold);
+    const maxMargin = Math.max(60, ...margins);
+    const minMargin = Math.min(0,  ...margins);
+    const maxUnits  = Math.max(100, ...units);
+    const range = maxMargin - minMargin || 1;
+    return items.map((i) => ({
+      name:           i.menu_item,
+      left:           8 + (i.units_sold / maxUnits) * 84,
+      top:            92 - ((i.margin_pct - minMargin) / range) * 84,
+      color:          CLASS_COLOR[i.classification],
+      classification: i.classification
+    }));
+  });
+
+  readonly revcostRows = computed((): RevCostRow[] => {
+    const items = this.analysisResult()?.items ?? [];
+    if (!items.length) return [];
+    const sorted  = [...items].sort((a, b) => b.contribution_idr - a.contribution_idr);
+    const maxRev  = Math.max(1, ...sorted.map((r) => r.revenue_idr));
+    return sorted.map((r) => ({
+      name:          r.menu_item,
+      revenue:       r.revenue_idr,
+      cost:          r.est_cost_idr,
+      widthRevPct:   (r.revenue_idr  / maxRev) * 100,
+      widthCostPct:  (r.est_cost_idr / maxRev) * 100
+    }));
+  });
+
+  readonly sortedItems = computed(() =>
+    [...(this.analysisResult()?.items ?? [])].sort((a, b) => b.contribution_idr - a.contribution_idr)
+  );
+
+  readonly classifications: ItemClassification[] = ['star', 'workhorse', 'niche', 'deadweight'];
+
+  ngOnInit(): void  { window.addEventListener('md:load-demo', this.demoListener); }
+  ngOnDestroy(): void { window.removeEventListener('md:load-demo', this.demoListener); }
+
+  classColor(c: ItemClassification): string  { return CLASS_COLOR[c]; }
+  classBg(c: ItemClassification): string     { return CLASS_BG[c]; }
+  classGlyph(c: ItemClassification): string  { return CLASS_GLYPH[c]; }
+  classLabel(c: ItemClassification): string  { return CLASS_LABEL[c]; }
+  classLine(c: ItemClassification): string   { return CLASS_LINE[c]; }
+  sugTone(type: string): string              { return SUGGESTION_TONE[type]  ?? 'blue'; }
+  sugLabel(type: string): string             { return SUGGESTION_LABEL[type] ?? type; }
+
+  /** Maps an item name to the right icon, matching the design's icon fields */
+  iconForName(name: string): string {
+    const n = name.toLowerCase();
+    if (n.includes('kopi') || n.includes('coffee')) return 'coffee';
+    if (n.startsWith('es ') || n.includes('teh') || n.includes('jeruk')) return 'cup';
+    if (n.includes('mie') || n.includes('soto') || n.includes('gado') || n.includes('bakso')) return 'bowl';
+    return 'fastfood';
+  }
+
+  verdictHeadline(verdict: string): string {
+    if (verdict === 'profitable') return 'Your warung made money this period.';
+    if (verdict === 'break_even') return 'Roughly break even this period.';
+    return 'You spent more than you brought in.';
+  }
+
   refreshMenu(): void {
     this.menuItems.set(this.loadMenuItems());
-    this.message.set('Menu state refreshed from local workspace.');
   }
 
-  uploadSampleSales(): void {
-    if (this.isLocked()) {
-      this.message.set('Complete at least one ready menu item before analysing sales.');
-      return;
-    }
-    this.salesLoaded.set(true);
-    this.message.set('Sample sales workbook loaded: 30 days, all ready menu columns matched.');
+  runAnalysis(): void {
+    if (this.isLocked() || this.analyzing()) return;
+    this.analyzing.set(true);
+    window.setTimeout(() => {
+      const items = this.buildItems();
+      const totalRevenue = items.reduce((s, i) => s + i.revenue_idr, 0);
+      const totalCost    = items.reduce((s, i) => s + i.est_cost_idr, 0);
+      const gross        = totalRevenue - totalCost;
+      const margin       = totalRevenue ? (gross / totalRevenue) * 100 : 0;
+      this.analysisResult.set({
+        summary: {
+          total_revenue_idr:      totalRevenue,
+          total_cost_idr:         totalCost,
+          total_gross_profit_idr: gross,
+          overall_margin_pct:     margin,
+          verdict:                margin > 2 ? 'profitable' : margin < -2 ? 'loss' : 'break_even',
+          verdict_summary:        'Menu Anda menghasilkan gross margin sehat untuk periode sample ini.'
+        },
+        items,
+        suggestions: this.buildSuggestions()
+      });
+      this.expandedSugId.set(0);
+      this.dismissedIds.set([]);
+      this.analyzing.set(false);
+    }, 1200);
   }
 
-  analyse(): void {
-    if (!this.salesLoaded()) {
-      this.message.set('Upload or load the sample sales workbook first.');
-      return;
-    }
-
-    const items = this.buildItems();
-    const totalRevenue = items.reduce((sum, item) => sum + item.revenue_idr, 0);
-    const totalCost = items.reduce((sum, item) => sum + item.est_cost_idr, 0);
-    const gross = totalRevenue - totalCost;
-    const margin = totalRevenue ? (gross / totalRevenue) * 100 : 0;
-
-    this.analysisResult.set({
-      summary: {
-        total_revenue_idr: totalRevenue,
-        total_cost_idr: totalCost,
-        total_gross_profit_idr: gross,
-        overall_margin_pct: margin,
-        verdict: margin > 2 ? 'profitable' : margin < -2 ? 'loss' : 'break_even',
-        verdict_summary: 'Menu Anda menghasilkan gross margin sehat untuk periode sample ini. Fokus berikutnya adalah menjaga volume item high-margin dan memperbaiki item volume tinggi yang margin-nya lebih tipis.'
-      },
-      items,
-      suggestions: this.buildSuggestions(items)
-    });
-    this.message.set('Profitability analysis generated locally. Backend will replace this calculation when ready.');
+  resetAnalysis(): void {
+    this.analysisResult.set(null);
+    this.dismissedIds.set([]);
   }
+
+  toggleSuggestion(idx: number): void  { this.expandedSugId.set(this.expandedSugId() === idx ? -1 : idx); }
+  dismissSuggestion(idx: number): void { this.dismissedIds.update((ids) => [...ids, idx]); this.expandedSugId.set(-1); }
+  showDismissed(): void                { this.dismissedIds.set([]); }
+  isDismissed(idx: number): boolean    { return this.dismissedIds().includes(idx); }
+  isExpanded(idx: number): boolean     { return this.expandedSugId() === idx; }
 
   fmtIDR(value: number | null | undefined): string {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value ?? 0);
   }
 
-  trackByName(_: number, item: { menu_item: string }): string {
-    return item.menu_item;
-  }
+  trackByName(_: number, item: { menu_item: string }): string { return item.menu_item; }
+  trackByIdx(idx: number): number { return idx; }
 
+  /* Build per-item analysis rows.
+     Uses DEMO_SALES keyed by item id for 30-day unit counts. */
   private buildItems(): ProfitabilityItem[] {
     const ready = this.readyItems();
-    const raw = ready.map((item, index) => {
-      const units = [320, 210, 430, 150, 95, 280][index % 6];
-      const revenue = units * item.selling_price_idr;
-      const cost = units * (item.est_cost_idr ?? 0);
-      const margin = revenue ? ((revenue - cost) / revenue) * 100 : 0;
+    const raw = ready.map((item) => {
+      const units    = DEMO_SALES[item.id] ?? 0;
+      const revenue  = units * item.selling_price_idr;
+      const cost     = units * (item.est_cost_idr ?? 0);
+      const margin   = revenue ? ((revenue - cost) / revenue) * 100 : 0;
       return {
-        menu_item: item.name,
-        units_sold: units,
-        revenue_idr: revenue,
-        est_cost_idr: cost,
+        menu_item:       item.name,
+        units_sold:      units,
+        revenue_idr:     revenue,
+        est_cost_idr:    cost,
         contribution_idr: revenue - cost,
-        margin_pct: margin,
-        classification: 'star' as ItemClassification
+        margin_pct:      margin,
+        classification:  'star' as ItemClassification
       };
     });
 
-    const medianMargin = this.median(raw.map((item) => item.margin_pct));
-    const medianUnits = this.median(raw.map((item) => item.units_sold));
-    return raw.map((item) => ({ ...item, classification: this.classify(item.margin_pct, item.units_sold, medianMargin, medianUnits) }));
+    const medianMargin = this.median(raw.map((i) => i.margin_pct));
+    const medianUnits  = this.median(raw.map((i) => i.units_sold));
+    return raw.map((i) => ({ ...i, classification: this.classify(i.margin_pct, i.units_sold, medianMargin, medianUnits) }));
   }
 
-  private buildSuggestions(items: ProfitabilityItem[]): AiSuggestion[] {
-    const workhorse = items.find((item) => item.classification === 'workhorse');
-    const star = items.find((item) => item.classification === 'star') ?? items[0];
-    const deadweight = items.find((item) => item.classification === 'deadweight');
-
-    const suggestions: AiSuggestion[] = [];
-    if (star) {
-      suggestions.push({
-        suggestion_type: 'promote',
-        title: `Push ${star.menu_item} as anchor menu`,
-        description: 'Item ini punya kombinasi volume dan margin yang kuat. Jadikan rekomendasi utama di menu board atau campaign harian.',
-        items_involved: [star.menu_item],
-        estimated_impact: 'Higher high-margin sales mix',
-        review_status: 'new'
-      });
-    }
-    if (workhorse) {
-      suggestions.push({
-        suggestion_type: 'reprice',
-        title: `Review cost structure for ${workhorse.menu_item}`,
-        description: 'Volume kuat tapi margin relatif rendah. Coba naikkan harga kecil atau cari ingredient substitute yang tidak mengubah rasa utama.',
-        items_involved: [workhorse.menu_item],
-        estimated_impact: 'Improve contribution without losing traffic',
-        review_status: 'new'
-      });
-    }
-    if (deadweight) {
-      suggestions.push({
-        suggestion_type: 'sunset',
-        title: `Limit ${deadweight.menu_item} availability`,
-        description: 'Volume dan margin sama-sama rendah. Pertimbangkan seasonal availability atau bundle dengan item yang lebih kuat.',
-        items_involved: [deadweight.menu_item],
-        estimated_impact: 'Reduce low-return prep complexity',
-        review_status: 'new'
-      });
-    }
-    return suggestions.slice(0, 3);
+  /* Use pre-baked suggestions from the design's SAMPLE_SUGGESTIONS */
+  private buildSuggestions(): AiSuggestion[] {
+    return DEMO_SUGGESTIONS.map((s, i) => ({
+      id:               i,
+      suggestion_type:  s.suggestion_type as AiSuggestion['suggestion_type'],
+      title:            s.title,
+      description:      s.description,
+      items_involved:   s.items_involved,
+      estimated_impact: s.estimated_impact,
+      review_status:    'new' as const
+    }));
   }
 
   private classify(margin: number, units: number, medianMargin: number, medianUnits: number): ItemClassification {
     if (margin >= medianMargin && units >= medianUnits) return 'star';
-    if (margin < medianMargin && units >= medianUnits) return 'workhorse';
-    if (margin >= medianMargin && units < medianUnits) return 'niche';
+    if (margin <  medianMargin && units >= medianUnits) return 'workhorse';
+    if (margin >= medianMargin && units <  medianUnits) return 'niche';
     return 'deadweight';
   }
 
   private median(values: number[]): number {
     if (!values.length) return 0;
     const sorted = [...values].sort((a, b) => a - b);
-    const middle = Math.floor(sorted.length / 2);
-    return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
   }
 
   private loadMenuItems(): StoredMenuItem[] {
-    const raw = localStorage.getItem(MENU_STORAGE_KEY);
-    if (!raw) return [];
-    try {
-      return JSON.parse(raw) as StoredMenuItem[];
-    } catch {
-      return [];
-    }
+    try { return JSON.parse(localStorage.getItem(MENU_STORAGE_KEY) ?? 'null') ?? []; } catch { return []; }
   }
 }
-

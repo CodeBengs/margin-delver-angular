@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, signal } from '@angular/core';
+import { Component, computed, OnDestroy, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
+import { DEMO_MENU } from '../../core/demo-data';
 import { Ingredient } from '../../core/models/ingredient.model';
 import { MenuItem } from '../../core/models/menu-item.model';
 
@@ -12,51 +13,6 @@ type DraftMenuItem = Omit<MenuItem, 'id' | 'ingredients'> & { id: number; ingred
 
 const STORAGE_KEY = 'md_angular_menu_v1';
 
-const DEMO_ITEMS: DraftMenuItem[] = [
-  {
-    id: 1,
-    name: 'Nasi Goreng Ayam',
-    selling_price_idr: 28000,
-    est_cost_idr: 9300,
-    gross_margin_idr: 18700,
-    gross_margin_pct: 66.8,
-    status: 'ready',
-    ingredients: [
-      { id: 11, name: 'Nasi putih', quantity: 180, unit: 'gram', unit_cost_idr: 15, total_cost_idr: 2700, cost_source: 'price_list' },
-      { id: 12, name: 'Ayam', quantity: 70, unit: 'gram', unit_cost_idr: 58, total_cost_idr: 4060, cost_source: 'price_list' },
-      { id: 13, name: 'Bumbu nasi goreng', quantity: 1, unit: 'porsi', unit_cost_idr: 2540, total_cost_idr: 2540, cost_source: 'manual' }
-    ]
-  },
-  {
-    id: 2,
-    name: 'Ayam Geprek Sambal Matah',
-    selling_price_idr: 32000,
-    est_cost_idr: 15150,
-    gross_margin_idr: 16850,
-    gross_margin_pct: 52.7,
-    status: 'ready',
-    ingredients: [
-      { id: 21, name: 'Ayam fillet', quantity: 120, unit: 'gram', unit_cost_idr: 65, total_cost_idr: 7800, cost_source: 'price_list' },
-      { id: 22, name: 'Tepung bumbu', quantity: 45, unit: 'gram', unit_cost_idr: 38, total_cost_idr: 1710, cost_source: 'price_list' },
-      { id: 23, name: 'Sambal matah', quantity: 1, unit: 'porsi', unit_cost_idr: 5640, total_cost_idr: 5640, cost_source: 'manual' }
-    ]
-  },
-  {
-    id: 3,
-    name: 'Es Kopi Susu Aren',
-    selling_price_idr: 22000,
-    est_cost_idr: 7800,
-    gross_margin_idr: 14200,
-    gross_margin_pct: 64.5,
-    status: 'ready',
-    ingredients: [
-      { id: 31, name: 'Espresso', quantity: 35, unit: 'ml', unit_cost_idr: 95, total_cost_idr: 3325, cost_source: 'manual' },
-      { id: 32, name: 'Susu', quantity: 120, unit: 'ml', unit_cost_idr: 24, total_cost_idr: 2880, cost_source: 'price_list' },
-      { id: 33, name: 'Gula aren', quantity: 25, unit: 'ml', unit_cost_idr: 64, total_cost_idr: 1600, cost_source: 'price_list' }
-    ]
-  }
-];
-
 @Component({
   selector: 'app-landing',
   standalone: true,
@@ -64,109 +20,86 @@ const DEMO_ITEMS: DraftMenuItem[] = [
   templateUrl: './landing.component.html',
   styleUrl: './landing.component.scss'
 })
-export class LandingComponent {
+export class LandingComponent implements OnInit, OnDestroy {
+  private readonly demoListener = () => {
+    const fresh = this.loadItems();
+    if (fresh.length) {
+      this.menuItems.set(fresh);
+      this.selectedItemId.set(null);
+    }
+  };
   readonly activeTab = signal<MenuTab>('upload');
   readonly menuItems = signal<DraftMenuItem[]>(this.loadItems());
-  readonly selectedItemId = signal<number | null>(this.menuItems()[0]?.id ?? null);
+  readonly selectedItemId = signal<number | null>(null);
   readonly processing = signal(false);
-  readonly notice = signal('');
   readonly manualName = signal('');
   readonly manualPrice = signal<number | null>(null);
+  readonly dragOver = signal(false);
+  readonly confirmDeleteItem = signal<DraftMenuItem | null>(null);
+  readonly confirmDeleteIngredient = signal<{ item: DraftMenuItem; ingIdx: number } | null>(null);
 
-  readonly selectedItem = computed(() => this.menuItems().find((item) => item.id === this.selectedItemId()) ?? null);
-  readonly readyItems = computed(() => this.menuItems().filter((item) => item.status === 'ready'));
-  readonly totalRevenuePotential = computed(() => this.menuItems().reduce((sum, item) => sum + item.selling_price_idr, 0));
-  readonly totalCost = computed(() => this.menuItems().reduce((sum, item) => sum + (item.est_cost_idr ?? 0), 0));
+  readonly hasMenu = computed(() => this.menuItems().length > 0);
+  readonly readyItems = computed(() => this.menuItems().filter((i) => i.status === 'ready'));
+  readonly readyCount = computed(() => this.readyItems().length);
+  readonly hasPendingItems = computed(() => this.menuItems().some((i) => ['draft', 'pending', 'incomplete'].includes(i.status)));
+  readonly totalRevenuePotential = computed(() => this.menuItems().reduce((s, i) => s + i.selling_price_idr, 0));
+  readonly totalCost = computed(() => this.menuItems().reduce((s, i) => s + (i.est_cost_idr ?? 0), 0));
   readonly averageMargin = computed(() => {
     const ready = this.readyItems();
-    if (!ready.length) return 0;
-    return ready.reduce((sum, item) => sum + (item.gross_margin_pct ?? 0), 0) / ready.length;
+    return ready.length ? ready.reduce((s, i) => s + (i.gross_margin_pct ?? 0), 0) / ready.length : 0;
   });
 
-  readonly units = ['gram', 'ml', 'butir', 'lembar', 'siung', 'buah', 'sdm', 'sdt', 'porsi'] as const;
+  ngOnInit(): void { window.addEventListener('md:load-demo', this.demoListener); }
+  ngOnDestroy(): void { window.removeEventListener('md:load-demo', this.demoListener); }
 
-  setTab(tab: MenuTab): void {
-    this.activeTab.set(tab);
-  }
+  setTab(tab: MenuTab): void { this.activeTab.set(tab); }
 
   loadDemo(): void {
-    this.menuItems.set(this.cloneItems(DEMO_ITEMS));
-    this.selectedItemId.set(1);
-    this.notice.set('Demo menu loaded. Semua data masih lokal di browser.');
-    this.persist();
-  }
-
-  clearWorkspace(): void {
-    this.menuItems.set([]);
+    this.menuItems.set(JSON.parse(JSON.stringify(DEMO_MENU)) as DraftMenuItem[]);
     this.selectedItemId.set(null);
-    this.notice.set('Workspace cleared.');
     this.persist();
+    window.dispatchEvent(new CustomEvent('md:load-demo'));
   }
 
-  setManualName(value: string): void {
-    this.manualName.set(value);
-  }
-
-  setManualPrice(value: string | number | null): void {
-    const parsed = Number(value);
-    this.manualPrice.set(Number.isFinite(parsed) ? parsed : null);
+  setManualName(v: string): void { this.manualName.set(v); }
+  setManualPrice(v: string | number | null): void {
+    const n = Number(v);
+    this.manualPrice.set(Number.isFinite(n) && n > 0 ? n : null);
   }
 
   addManualItem(): void {
     const name = this.manualName().trim();
     const price = Number(this.manualPrice());
-    if (!name || !price || price <= 0) {
-      this.notice.set('Isi nama menu dan selling price lebih dari 0.');
-      return;
-    }
-
-    const duplicate = this.menuItems().some((item) => item.name.toLowerCase() === name.toLowerCase());
-    if (duplicate) {
-      this.notice.set('Menu dengan nama yang sama sudah ada.');
-      return;
-    }
-
+    if (!name || !price) return;
+    if (this.menuItems().some((i) => i.name.toLowerCase() === name.toLowerCase())) return;
     const item: DraftMenuItem = {
-      id: Date.now(),
-      name,
-      selling_price_idr: price,
-      est_cost_idr: null,
-      gross_margin_idr: null,
-      gross_margin_pct: null,
-      status: 'draft',
-      ingredients: []
+      id: Date.now(), name, selling_price_idr: price,
+      est_cost_idr: null, gross_margin_idr: null, gross_margin_pct: null,
+      status: 'draft', ingredients: []
     };
-
     this.menuItems.update((items) => [item, ...items]);
     this.selectedItemId.set(item.id);
     this.manualName.set('');
     this.manualPrice.set(null);
-    this.notice.set('Menu added. Jalankan estimate atau isi ingredient manual.');
     this.persist();
   }
 
-  simulateUpload(): void {
-    this.loadDemo();
-    this.notice.set('Excel sample accepted: 3 menu items detected, header row skipped.');
-  }
+  simulateUpload(): void { this.loadDemo(); }
 
   estimateMargins(): void {
-    if (!this.menuItems().length) {
-      this.notice.set('Tambahkan menu dulu sebelum estimate margin.');
-      return;
-    }
-
+    if (!this.hasPendingItems()) return;
     this.processing.set(true);
-    this.menuItems.update((items) => items.map((item) => item.status === 'draft' ? { ...item, status: 'estimating' } : item));
-
+    this.menuItems.update((items) =>
+      items.map((i) => ['draft', 'pending', 'incomplete'].includes(i.status) ? { ...i, status: 'estimating' } : i)
+    );
     window.setTimeout(() => {
-      this.menuItems.update((items) => items.map((item) => {
-        if (item.status !== 'estimating') return item;
-        const fallbackIngredients = this.fakeIngredients(item.id);
-        return this.recalculate({ ...item, ingredients: fallbackIngredients, status: 'ready' });
-      }));
+      this.menuItems.update((items) =>
+        items.map((i) => {
+          if (i.status !== 'estimating') return i;
+          return this.recalculate({ ...i, ingredients: this.fakeIngredients(i.id), status: 'ready' });
+        })
+      );
       this.processing.set(false);
-      this.notice.set('Local estimate selesai. Nanti step ini akan diganti response Claude dari backend Go.');
       this.persist();
     }, 600);
   }
@@ -175,72 +108,88 @@ export class LandingComponent {
     this.selectedItemId.set(this.selectedItemId() === item.id ? null : item.id);
   }
 
-  isExpanded(item: DraftMenuItem): boolean {
-    return this.selectedItemId() === item.id;
-  }
+  isExpanded(item: DraftMenuItem): boolean { return this.selectedItemId() === item.id; }
+  isDanger(item: DraftMenuItem): boolean { return (item.gross_margin_pct ?? 0) < 0; }
 
-  addIngredient(item: DraftMenuItem | null): void {
+  openDeleteConfirm(item: DraftMenuItem): void { this.confirmDeleteItem.set(item); }
+  cancelDelete(): void { this.confirmDeleteItem.set(null); }
+  confirmDelete(): void {
+    const item = this.confirmDeleteItem();
     if (!item) return;
-    const ingredient: DraftIngredient = {
-      id: Date.now(),
-      name: 'Ingredient baru',
-      quantity: 1,
-      unit: 'porsi',
-      unit_cost_idr: 0,
-      total_cost_idr: 0,
-      cost_source: 'manual'
-    };
-    this.updateItem({ ...item, ingredients: [...item.ingredients, ingredient] });
+    this.menuItems.update((items) => items.filter((i) => i.id !== item.id));
+    if (this.selectedItemId() === item.id) this.selectedItemId.set(null);
+    this.confirmDeleteItem.set(null);
+    this.persist();
   }
 
-  removeIngredient(item: DraftMenuItem, ingredientId: number): void {
-    this.updateItem({ ...item, ingredients: item.ingredients.filter((ingredient) => ingredient.id !== ingredientId) });
+  openIngDeleteConfirm(item: DraftMenuItem, ingIdx: number): void {
+    this.confirmDeleteIngredient.set({ item, ingIdx });
+  }
+  cancelIngDelete(): void { this.confirmDeleteIngredient.set(null); }
+  confirmIngDelete(): void {
+    const conf = this.confirmDeleteIngredient();
+    if (!conf) return;
+    const updated = { ...conf.item, ingredients: conf.item.ingredients.filter((_, i) => i !== conf.ingIdx) };
+    this.updateItem(updated);
+    this.confirmDeleteIngredient.set(null);
   }
 
-  updateIngredient(item: DraftMenuItem, ingredient: DraftIngredient, key: keyof DraftIngredient, value: string | number | null): void {
-    const ingredients = item.ingredients.map((current) => {
-      if (current.id !== ingredient.id) return current;
-      const updated = { ...current, [key]: value } as DraftIngredient;
-      updated.quantity = Number(updated.quantity) || 0;
-      updated.unit_cost_idr = updated.unit_cost_idr === null ? null : Number(updated.unit_cost_idr) || 0;
-      updated.total_cost_idr = updated.unit_cost_idr === null ? null : updated.quantity * updated.unit_cost_idr;
-      updated.cost_source = updated.unit_cost_idr === null ? 'unknown' : 'manual';
-      return updated;
+  addIngredient(item: DraftMenuItem): void {
+    const ing: DraftIngredient = { id: Date.now(), name: '', quantity: 0, unit: 'gram', unit_cost_idr: 0, total_cost_idr: 0, cost_source: 'manual' };
+    this.updateItem({ ...item, ingredients: [...item.ingredients, ing] });
+  }
+
+  updateIngredient(item: DraftMenuItem, ing: DraftIngredient, key: keyof DraftIngredient, value: string | number | null): void {
+    const ingredients = item.ingredients.map((cur) => {
+      if (cur.id !== ing.id) return cur;
+      const upd = { ...cur, [key]: value } as DraftIngredient;
+      upd.quantity = Number(upd.quantity) || 0;
+      upd.unit_cost_idr = upd.unit_cost_idr === null ? null : Number(upd.unit_cost_idr) || 0;
+      upd.total_cost_idr = upd.unit_cost_idr === null ? null : upd.quantity * upd.unit_cost_idr;
+      upd.cost_source = upd.unit_cost_idr === null ? 'unknown' : 'manual';
+      return upd;
     });
     this.updateItem({ ...item, ingredients });
   }
 
-  deleteItem(item: DraftMenuItem): void {
-    this.menuItems.update((items) => items.filter((current) => current.id !== item.id));
-    this.selectedItemId.set(this.menuItems()[0]?.id ?? null);
-    this.persist();
+  marginClass(item: DraftMenuItem): string {
+    if (item.status !== 'ready') return '';
+    const pct = item.gross_margin_pct ?? 0;
+    if (pct >= 60) return 'pct-good';
+    if (pct >= 30) return 'pct-ok';
+    if (pct >= 0) return 'pct-warn';
+    return 'pct-bad';
+  }
+
+  iconForName(name: string): string {
+    const n = name.toLowerCase();
+    if (n.includes('kopi') || n.includes('coffee')) return 'coffee';
+    if (n.startsWith('es ') || n.includes('teh') || n.includes('jeruk')) return 'cup';
+    if (n.includes('mie') || n.includes('soto') || n.includes('gado') || n.includes('bakso')) return 'bowl';
+    return 'fastfood';
   }
 
   fmtIDR(value: number | null | undefined): string {
     return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(value ?? 0);
   }
 
-  trackById(_: number, item: { id: number }): number {
-    return item.id;
+  ingDeleteName(): string {
+    const conf = this.confirmDeleteIngredient();
+    if (!conf) return 'Unnamed ingredient';
+    return conf.item.ingredients[conf.ingIdx]?.name || 'Unnamed ingredient';
   }
 
-  marginClass(item: DraftMenuItem): string {
-    const margin = item.gross_margin_pct ?? 0;
-    if (item.status !== 'ready') return 'muted';
-    if (margin >= 60) return 'good';
-    if (margin >= 45) return 'warn';
-    return 'bad';
-  }
+  trackById(_: number, item: { id: number }): number { return item.id; }
 
   private updateItem(item: DraftMenuItem): void {
     const recalculated = this.recalculate(item);
-    this.menuItems.update((items) => items.map((current) => current.id === item.id ? recalculated : current));
+    this.menuItems.update((items) => items.map((cur) => cur.id === item.id ? recalculated : cur));
     this.persist();
   }
 
   private recalculate(item: DraftMenuItem): DraftMenuItem {
-    const hasUnknown = item.ingredients.some((ingredient) => ingredient.unit_cost_idr === null);
-    const cost = item.ingredients.reduce((sum, ingredient) => sum + (ingredient.total_cost_idr ?? 0), 0);
+    const hasUnknown = item.ingredients.some((i) => i.unit_cost_idr === null);
+    const cost = item.ingredients.reduce((s, i) => s + (i.total_cost_idr ?? 0), 0);
     const gross = item.selling_price_idr - cost;
     return {
       ...item,
@@ -259,25 +208,13 @@ export class LandingComponent {
   }
 
   private loadItems(): DraftMenuItem[] {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
     try {
-      return JSON.parse(raw) as DraftMenuItem[];
-    } catch {
-      return [];
-    }
+      const items: DraftMenuItem[] = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') ?? [];
+      return items.map((i) => ({ ...i, ingredients: i.ingredients ?? [] }));
+    } catch { return []; }
   }
 
   private persist(): void {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(this.menuItems()));
   }
-
-  private cloneItems(items: DraftMenuItem[]): DraftMenuItem[] {
-    return JSON.parse(JSON.stringify(items)) as DraftMenuItem[];
-  }
 }
-
-
-
-
-
