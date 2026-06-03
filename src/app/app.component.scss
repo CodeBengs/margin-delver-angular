@@ -1,4 +1,4 @@
-.app {
+﻿.app {
   display: grid;
   grid-template-columns: var(--sidebar-width, 264px) minmax(0, 1fr);
   min-height: 100vh;
@@ -13,7 +13,7 @@
   display: flex;
   flex-direction: column;
   gap: 2px;
-  padding: 16px 12px;
+  padding: 0 12px 16px;
   border-right: 1px solid var(--border-default, #ddd);
   background: #fff;
 }
@@ -22,9 +22,10 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 8px 16px;
+  min-height: var(--topbar-height, 62px);
+  padding: 0 8px;
   margin-bottom: 12px;
-  border-bottom: 1px solid var(--border-subtle, #eee);
+  border-bottom: 1px solid var(--border-default, #ddd);
   color: inherit;
   text-decoration: none;
 }
@@ -121,30 +122,56 @@
 
 .session-card {
   display: grid;
-  gap: 4px;
+  gap: 10px;
   margin: auto 4px 8px;
-  padding: 12px 14px;
+  padding: 14px 14px 12px;
   border: 1px solid var(--color-orange-100, #ffd9ad);
-  border-radius: 10px;
-  background: linear-gradient(135deg, #fff4e5 0%, #fffaf0 100%);
+  border-radius: 8px;
+  background: #fff9ef;
 }
 
 .session-card strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   color: var(--color-orange-700, #a64d00);
   font-size: 11px;
-  letter-spacing: 0.04em;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  line-height: 1;
   text-transform: uppercase;
 }
 
-.session-card span {
-  color: var(--fg-strong, #222);
-  font-weight: 750;
+.session-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #42b96f;
 }
 
 .session-card p {
+  margin: 0;
   color: var(--fg-muted, #666);
   font-size: 12px;
-  line-height: 1.4;
+  line-height: 1.38;
+}
+
+.session-card button {
+  justify-self: start;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--brand-primary, #eb7300);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--color-orange-700, #a64d00);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.session-card button:hover {
+  background: var(--color-orange-50, #fff4e5);
 }
 
 .main {
@@ -210,4 +237,6 @@
     flex-wrap: wrap;
   }
 }
+
+
 

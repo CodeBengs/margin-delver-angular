@@ -1,0 +1,109 @@
+﻿<section class="page settings-page">
+  <header class="settings-hero">
+    <div class="title-rule"></div>
+    <div class="settings-title">
+      <h1>Settings</h1>
+      <p>Connect your Anthropic API key so Margin Delver can estimate recipes and generate analysis.</p>
+      <p>The key is stored only in this browser.</p>
+    </div>
+    <span class="connection-pill" [class.connected]="connected()">
+      <span class="dot"></span>
+      {{ connected() ? 'Connected' : 'Not connected' }}
+    </span>
+  </header>
+
+  <section class="settings-stack">
+    <article class="panel key-panel">
+      <header class="card-head">
+        <div class="card-icon">
+          <img src="ds/icons/lock-circle.svg" alt="" />
+        </div>
+        <div>
+          <h2>Claude API key</h2>
+          <p>Anthropic key, used for recipe enrichment and sales analysis.</p>
+        </div>
+      </header>
+
+      <div class="card-body">
+        <label class="field-label" for="claude-key">Secret key</label>
+        <div class="secret-field">
+          <img class="field-leading" src="ds/icons/lock-circle.svg" alt="" />
+          <input
+            id="claude-key"
+            [type]="showKey() ? 'text' : 'password'"
+            [value]="showKey() ? apiKey() : maskedKey()"
+            (input)="updateApiKey($any($event.target).value)"
+            placeholder="sk-ant-api03-..."
+          />
+          <button type="button" class="icon-button" (click)="toggleKeyVisibility()" aria-label="Toggle key visibility">
+            <img [src]="showKey() ? 'ds/icons/eye-closed.svg' : 'ds/icons/eye-open.svg'" alt="" />
+          </button>
+        </div>
+
+        <div class="key-help-row">
+          <p>Paste the key that starts with <code>sk-ant-</code>.</p>
+          <a href="https://console.anthropic.com" target="_blank" rel="noreferrer">
+            <img src="ds/icons/link.svg" alt="" />
+            Get a key from the Anthropic console
+          </a>
+        </div>
+
+        <div class="action-row">
+          @if (apiKey()) {
+            <button type="button" class="text-danger" (click)="clearKey()">Clear key</button>
+          }
+          <button type="button" class="save-button" [disabled]="!connected()" (click)="saveKey()">
+            <img src="ds/icons/download.svg" alt="" />
+            Save key
+          </button>
+        </div>
+        @if (saved()) {
+          <p class="saved-note">Key saved in this browser.</p>
+        }
+      </div>
+    </article>
+
+    <article class="panel model-panel">
+      <header class="card-head">
+        <div class="card-icon">
+          <img src="ds/icons/document-setting.svg" alt="" />
+        </div>
+        <div>
+          <h2>Model & limits</h2>
+          <p>Which model to call and how much to send per request.</p>
+        </div>
+      </header>
+
+      <div class="setting-row">
+        <div>
+          <h3>Model</h3>
+          <p>Used for both recipe enrichment and sales analysis.</p>
+        </div>
+        <select [value]="model()" (change)="updateModel($any($event.target).value)">
+          <option value="claude-3-5-sonnet-latest">Claude Sonnet 4.5 - recommended</option>
+          <option value="claude-3-5-haiku-latest">Claude Haiku - faster draft</option>
+        </select>
+      </div>
+
+      <div class="setting-row">
+        <div>
+          <h3>Max menu items per estimate</h3>
+          <p>Fixed for this PoC - larger batches arrive in a later release.</p>
+        </div>
+        <div class="fixed-value">
+          <strong>20 items</strong>
+          <span>Fixed</span>
+        </div>
+      </div>
+    </article>
+
+    <article class="notice-panel">
+      <img src="ds/icons/lock-circle.svg" alt="" />
+      <p>
+        <strong>Your key stays on this device.</strong>
+        It's saved to this browser's local storage only - never sent to ESB servers, never shared between sessions on other machines.
+        Remove it any time, and clear it before handing off a shared computer.
+      </p>
+    </article>
+  </section>
+</section>

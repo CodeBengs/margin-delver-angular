@@ -1,4 +1,4 @@
-import { Component, computed, signal } from '@angular/core';
+﻿import { Component, computed, signal } from '@angular/core';
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 
@@ -17,8 +17,15 @@ export class AppComponent {
     if (url.startsWith('/menu')) return 'Menu & Margin';
     if (url.startsWith('/sales-upload')) return 'Sales Analysis';
     if (url.startsWith('/how-it-works')) return 'How it works';
+    if (url.startsWith('/settings')) return 'Settings';
     return 'Dashboard';
   });
+
+  resetSession(): void {
+    localStorage.removeItem('md_angular_menu_v1');
+    localStorage.removeItem('md_angular_sales_v1');
+    window.location.reload();
+  }
 
   constructor(router: Router) {
     this.currentUrl.set(router.url);
@@ -27,3 +34,5 @@ export class AppComponent {
     });
   }
 }
+
+

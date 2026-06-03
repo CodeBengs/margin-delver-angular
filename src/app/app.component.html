@@ -1,4 +1,4 @@
-<div class="app">
+﻿<div class="app">
   <aside class="sidebar" aria-label="Workspace navigation">
     <a class="brand" routerLink="/">
       <img class="brand-mark" src="assets/margin-delver-icon.png" alt="" />
@@ -30,16 +30,16 @@
         <img src="ds/icons/document-report.svg" alt="" />
         <span>How it works</span>
       </a>
-      <a class="nav-item quiet" routerLink="/">
+      <a class="nav-item quiet" routerLink="/settings" routerLinkActive="active">
         <img src="ds/icons/document-setting.svg" alt="" />
         <span>Settings</span>
       </a>
     </nav>
 
     <div class="session-card">
-      <strong>Session</strong>
-      <span>Local PoC</span>
-      <p>Data tersimpan di browser sampai backend Go aktif.</p>
+      <strong><span class="session-dot"></span> Session active</strong>
+      <p>Data lives in your browser only. Refresh resets the workspace.</p>
+      <button type="button" (click)="resetSession()">Reset session</button>
     </div>
   </aside>
 
@@ -60,5 +60,7 @@
     </main>
   </section>
 </div>
+
+
 
 

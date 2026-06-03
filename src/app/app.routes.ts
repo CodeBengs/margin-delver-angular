@@ -1,4 +1,4 @@
-import { Routes } from '@angular/router';
+﻿import { Routes } from '@angular/router';
 
 export const routes: Routes = [
   {
@@ -26,7 +26,15 @@ export const routes: Routes = [
     title: 'How it works - Margin Delver'
   },
   {
+    path: 'settings',
+    loadComponent: () =>
+      import('./features/settings/settings.component').then((m) => m.SettingsComponent),
+    title: 'Settings - Margin Delver'
+  },
+  {
     path: '**',
     redirectTo: ''
   }
 ];
+
+
