@@ -8,7 +8,10 @@
     </div>
     <div class="page-actions">
       @if (hasMenu()) {
-        <button type="button" class="btn btn-ghost">
+        <button type="button" class="btn btn-ghost"
+          (click)="exportMargins()"
+          [disabled]="processing()"
+          [title]="processing() ? 'Please wait for all items to finish processing before exporting.' : 'Export margins to Excel'">
           <img src="ds/icons/data-export.svg" alt="" width="16" height="16" /> Export .xlsx
         </button>
         @if (readyCount() > 0) {

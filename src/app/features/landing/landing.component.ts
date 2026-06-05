@@ -137,6 +137,10 @@ export class LandingComponent implements OnInit, OnDestroy {
     this.persist();
   }
 
+  exportMargins(): void {
+    this.exportService.downloadMarginReport(this.menuItems() as MenuItem[]);
+  }
+
   downloadMenuTemplate(): void {
     this.exportService.downloadMenuTemplate();
   }
