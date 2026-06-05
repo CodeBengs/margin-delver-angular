@@ -107,6 +107,15 @@
         </div>
       </div>
 
+      @if (failedCount() > 0) {
+        <div class="retry-failed-bar">
+          <span>{{ failedCount() }} item(s) failed estimation.</span>
+          <button type="button" class="btn btn-secondary" (click)="retryFailedItems()">
+            Retry failed items
+          </button>
+        </div>
+      }
+
       <table class="data-table">
         <thead>
           <tr>
@@ -177,8 +186,12 @@
                   <span class="badge badge-info">Estimating…</span>
                 } @else if (item.status === 'ready') {
                   <span class="badge badge-success">Ready</span>
+                } @else if (item.status === 'incomplete') {
+                  <span class="badge badge-warning">Incomplete</span>
                 } @else if (item.status === 'unrecognised') {
                   <span class="badge badge-warning">Unrecognised</span>
+                } @else if (item.status === 'failed') {
+                  <span class="badge badge-danger">Failed</span>
                 } @else {
                   <span class="badge badge-neutral">Pending</span>
                 }
@@ -194,6 +207,41 @@
               <tr class="row-detail">
                 <td colspan="8">
                   <div class="ingredient-panel">
+
+                    @if (item.status === 'unrecognised') {
+                      <div class="unrecognised-panel">
+                        <div class="unrecognised-msg">
+                          We couldn't find recipe data for <strong>{{ item.name }}</strong>.
+                          @if ((item.retryCount ?? 0) < 3) {
+                            Try an alternative name:
+                          } @else {
+                            You've used all 3 retries. Add ingredients manually instead.
+                          }
+                        </div>
+                        @if ((item.retryCount ?? 0) < 3) {
+                          <div class="unrecognised-retry-row">
+                            <input class="cell-input" placeholder="Alternative name (e.g. 'Nasi Goreng')"
+                                   [value]="retryAltName()[item.id] ?? ''"
+                                   (input)="setRetryAltName(item.id, $any($event.target).value)"
+                                   (keydown.enter)="retryLookup(item)" />
+                            <button type="button" class="btn btn-secondary"
+                                    [disabled]="!retryAltName()[item.id]?.trim() || retryLoading()[item.id]"
+                                    (click)="retryLookup(item)">
+                              {{ retryLoading()[item.id] ? 'Looking up…' : 'Retry lookup' }}
+                            </button>
+                          </div>
+                          @if (retryError()[item.id]) {
+                            <p class="cell-input-error">{{ retryError()[item.id] }}</p>
+                          }
+                          <p class="unrecognised-hint">{{ 3 - (item.retryCount ?? 0) }} attempt(s) remaining.</p>
+                        } @else {
+                          <button type="button" class="btn btn-secondary" (click)="switchToManualEntry(item)">
+                            Add ingredients manually
+                          </button>
+                        }
+                      </div>
+                    }
+
                     <div class="ingredient-head">
                       <div>
                         <div class="ingredient-eyebrow">AI-estimated recipe</div>

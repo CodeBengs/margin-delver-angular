@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, computed, OnDestroy, OnInit, signal, WritableSignal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
@@ -8,6 +8,7 @@ import { Ingredient } from '../../core/models/ingredient.model';
 import { MenuItem } from '../../core/models/menu-item.model';
 import { ParsedMenuResult } from '../../core/services/excel-parser.service';
 import { ExportService } from '../../core/services/export.service';
+import { EnrichmentService } from '../../core/services/enrichment.service';
 import { MenuUploadComponent } from './menu-upload/menu-upload.component';
 
 type MenuTab = 'upload' | 'manual';
@@ -57,7 +58,15 @@ export class LandingComponent implements OnInit, OnDestroy {
     return ready.length ? ready.reduce((s, i) => s + (i.gross_margin_pct ?? 0), 0) / ready.length : 0;
   });
 
-  constructor(private readonly exportService: ExportService) {}
+  readonly retryAltName: WritableSignal<Record<number, string>> = signal({});
+  readonly retryLoading: WritableSignal<Record<number, boolean>> = signal({});
+  readonly retryError: WritableSignal<Record<number, string>> = signal({});
+  readonly failedCount = computed(() => this.menuItems().filter(i => i.status === 'failed').length);
+
+  constructor(
+    private readonly exportService: ExportService,
+    private readonly enrichmentService: EnrichmentService
+  ) {}
 
   ngOnInit(): void { window.addEventListener('md:load-demo', this.demoListener); }
   ngOnDestroy(): void { window.removeEventListener('md:load-demo', this.demoListener); }
@@ -134,19 +143,108 @@ export class LandingComponent implements OnInit, OnDestroy {
   estimateMargins(): void {
     if (!this.hasPendingItems()) return;
     this.processing.set(true);
-    this.menuItems.update((items) =>
-      items.map((i) => ['draft', 'incomplete'].includes(i.status) ? { ...i, status: 'estimating' } : i)
+
+    // Mark pending items as estimating
+    const pendingItems = this.menuItems().filter(i => ['draft', 'incomplete'].includes(i.status));
+    this.menuItems.update(items =>
+      items.map(i => pendingItems.some(p => p.id === i.id) ? { ...i, status: 'estimating' } : i)
     );
-    window.setTimeout(() => {
-      this.menuItems.update((items) =>
-        items.map((i) => {
-          if (i.status !== 'estimating') return i;
-          return this.recalculate({ ...i, ingredients: this.fakeIngredients(i.id), status: 'ready' });
-        })
-      );
-      this.processing.set(false);
-      this.persist();
-    }, 600);
+
+    // Call enrichment service for each item sequentially
+    this.enrichmentService.estimateMargins(pendingItems as MenuItem[]).subscribe({
+      next: (result) => {
+        // Merge results back into menuItems by matching on name (since items may lack backend IDs)
+        this.menuItems.update(items =>
+          items.map(cur => {
+            const updated = result.items.find(r => r.name === cur.name);
+            if (!updated) return cur;
+            // Preserve local id and ingredients structure
+            return {
+              ...cur,
+              ...updated,
+              id: cur.id,
+              ingredients: (updated.ingredients ?? []).map((ing, idx) => ({
+                ...ing,
+                id: cur.id * 100 + idx + 1
+              }))
+            } as DraftMenuItem;
+          })
+        );
+        this.processing.set(false);
+        this.persist();
+      },
+      error: (err) => {
+        // Mark estimating items as failed
+        this.menuItems.update(items =>
+          items.map(i => i.status === 'estimating' ? { ...i, status: 'failed' } : i)
+        );
+        this.processing.set(false);
+        this.persist();
+        console.error('Enrichment error:', err);
+      }
+    });
+  }
+
+  retryFailedItems(): void {
+    // Reset all failed items back to draft so they get re-estimated
+    this.menuItems.update(items =>
+      items.map(i => i.status === 'failed' ? { ...i, status: 'draft' } : i)
+    );
+    this.estimateMargins();
+  }
+
+  setRetryAltName(itemId: number, value: string): void {
+    this.retryAltName.update(m => ({ ...m, [itemId]: value }));
+  }
+
+  retryLookup(item: DraftMenuItem): void {
+    const altName = (this.retryAltName()[item.id] ?? '').trim();
+    if (!altName) return;
+
+    // Mark as loading
+    this.retryLoading.update(m => ({ ...m, [item.id]: true }));
+    this.retryError.update(m => ({ ...m, [item.id]: '' }));
+
+    this.enrichmentService.retryLookup(item as MenuItem, altName).subscribe({
+      next: (updated) => {
+        this.menuItems.update(items => items.map(cur => {
+          if (cur.id !== item.id) return cur;
+          const newRetryCount = (cur.retryCount ?? 0) + 1;
+          return {
+            ...cur,
+            ...updated,
+            id: cur.id,
+            retryCount: newRetryCount,
+            ingredients: (updated.ingredients ?? []).map((ing, idx) => ({
+              ...ing,
+              id: cur.id * 100 + idx + 1
+            }))
+          } as DraftMenuItem;
+        }));
+        this.retryLoading.update(m => ({ ...m, [item.id]: false }));
+        this.retryAltName.update(m => { const n = { ...m }; delete n[item.id]; return n; });
+        this.persist();
+      },
+      error: (err) => {
+        const newRetryCount = (item.retryCount ?? 0) + 1;
+        // Update retryCount even on failure
+        this.menuItems.update(items => items.map(cur =>
+          cur.id === item.id ? { ...cur, retryCount: newRetryCount } : cur
+        ));
+        this.retryLoading.update(m => ({ ...m, [item.id]: false }));
+        this.retryError.update(m => ({ ...m, [item.id]: err.message ?? 'Retry failed. Try a different name.' }));
+        this.persist();
+      }
+    });
+  }
+
+  switchToManualEntry(item: DraftMenuItem): void {
+    // Reset item to draft with empty ingredients for manual entry
+    this.menuItems.update(items => items.map(cur =>
+      cur.id === item.id ? { ...cur, status: 'draft', ingredients: [], retryCount: 0 } : cur
+    ));
+    this.selectedItemId.set(item.id);  // expand ingredient panel
+    this.persist();
   }
 
   selectItem(item: DraftMenuItem): void {
@@ -317,13 +415,6 @@ export class LandingComponent implements OnInit, OnDestroy {
       gross_margin_pct: item.selling_price_idr > 0 ? (gross / item.selling_price_idr) * 100 : 0,
       status: hasUnknown || item.ingredients.length === 0 ? 'incomplete' : 'ready'
     };
-  }
-
-  private fakeIngredients(seed: number): DraftIngredient[] {
-    return [
-      { id: seed * 10 + 1, name: 'Bahan utama', quantity: 100, unit: 'gram', unit_cost_idr: 55, total_cost_idr: 5500, cost_source: 'manual' },
-      { id: seed * 10 + 2, name: 'Bumbu', quantity: 1, unit: 'porsi', unit_cost_idr: 2500, total_cost_idr: 2500, cost_source: 'manual' }
-    ];
   }
 
   private loadItems(): DraftMenuItem[] {
