@@ -2,8 +2,13 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, OnDestroy, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { DEMO_MENU, DEMO_SALES, DEMO_SUGGESTIONS } from '../../core/demo-data';
+import { DEMO_SALES } from '../../core/demo-data';
+import { MenuItem } from '../../core/models/menu-item.model';
 import { AiSuggestion, ItemClassification, ProfitabilityAnalysisResult, ProfitabilityItem } from '../../core/models/profitability.model';
+import { ExcelParserService, ParsedSalesResult, ParsedSalesRow } from '../../core/services/excel-parser.service';
+import { ExportService } from '../../core/services/export.service';
+import { SalesService } from '../../core/services/sales.service';
+import { FileDropZoneComponent } from '../../shared/components/file-drop-zone/file-drop-zone.component';
 
 interface StoredMenuItem {
   id: number;
@@ -70,25 +75,49 @@ const SUGGESTION_LABEL: Record<string, string> = {
 @Component({
   selector: 'app-sales-upload',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, FileDropZoneComponent],
   templateUrl: './sales-upload.component.html',
   styleUrl: './sales-upload.component.scss'
 })
 export class SalesUploadComponent implements OnInit, OnDestroy {
+  constructor(
+    private readonly excelParser: ExcelParserService,
+    private readonly salesService: SalesService,
+    private readonly exportService: ExportService
+  ) {}
+
   private readonly demoListener = () => {
     this.menuItems.set(this.loadMenuItems());
   };
+
   readonly message = signal('');
-  readonly analyzing = signal(false);
-  readonly dragOver = signal(false);
   readonly analysisResult = signal<ProfitabilityAnalysisResult | null>(null);
   readonly menuItems = signal<StoredMenuItem[]>(this.loadMenuItems());
   readonly expandedSugId = signal<number>(0);
   readonly dismissedIds = signal<number[]>([]);
 
+  // Upload state machine
+  readonly uploadState = signal<'idle' | 'preview' | 'analyzing' | 'results'>('idle');
+  readonly parsedSales = signal<ParsedSalesResult | null>(null);
+  readonly uploadError = signal<string>('');
+  readonly showAllRows = signal(false);
+  readonly periodDays = signal(0);
+
   readonly readyItems = computed(() => this.menuItems().filter((i) => i.status === 'ready' && i.est_cost_idr !== null));
   readonly isLocked = computed(() => this.readyItems().length === 0);
   readonly hasSales = computed(() => this.analysisResult() !== null);
+
+  readonly canAnalyse = computed(() => {
+    const s = this.parsedSales();
+    if (!s) return false;
+    return s.blockingErrors.length === 0 && s.matchedCount > 0;
+  });
+
+  readonly previewRows = computed(() => {
+    const s = this.parsedSales();
+    if (!s) return [];
+    return this.showAllRows() ? s.rows : s.rows.slice(0, 5);
+  });
 
   readonly classificationCounts = computed(() => {
     const counts: Record<ItemClassification, number> = { star: 0, workhorse: 0, niche: 0, deadweight: 0 };
@@ -164,40 +193,127 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
     return 'You spent more than you brought in.';
   }
 
+  hasCellError(row: ParsedSalesRow, colHeader: string): boolean {
+    return row.cellErrors.some(e => e.includes(colHeader));
+  }
+
   refreshMenu(): void {
     this.menuItems.set(this.loadMenuItems());
   }
 
-  runAnalysis(): void {
-    if (this.isLocked() || this.analyzing()) return;
-    this.analyzing.set(true);
-    window.setTimeout(() => {
-      const items = this.buildItems();
-      const totalRevenue = items.reduce((s, i) => s + i.revenue_idr, 0);
-      const totalCost    = items.reduce((s, i) => s + i.est_cost_idr, 0);
-      const gross        = totalRevenue - totalCost;
-      const margin       = totalRevenue ? (gross / totalRevenue) * 100 : 0;
-      this.analysisResult.set({
-        summary: {
-          total_revenue_idr:      totalRevenue,
-          total_cost_idr:         totalCost,
-          total_gross_profit_idr: gross,
-          overall_margin_pct:     margin,
-          verdict:                margin > 2 ? 'profitable' : margin < -2 ? 'loss' : 'break_even',
-          verdict_summary:        'Menu Anda menghasilkan gross margin sehat untuk periode sample ini.'
-        },
-        items,
-        suggestions: this.buildSuggestions()
-      });
-      this.expandedSugId.set(0);
-      this.dismissedIds.set([]);
-      this.analyzing.set(false);
-    }, 1200);
+  async onSalesFileSelected(file: File): Promise<void> {
+    this.uploadError.set('');
+    this.uploadState.set('idle'); // reset any previous preview
+    try {
+      const knownNames = this.readyItems().map(i => i.name);
+      const result = await this.excelParser.parseSalesFile(file, knownNames);
+      this.parsedSales.set(result);
+      this.periodDays.set(result.rows.length);
+      this.showAllRows.set(false);
+      this.uploadState.set('preview');
+    } catch {
+      this.uploadError.set('Could not parse the file. Make sure it is a valid .xlsx or .xls file.');
+    }
+  }
+
+  confirmAndAnalyse(): void {
+    const sales = this.parsedSales();
+    if (!sales || !this.canAnalyse()) return;
+
+    this.uploadState.set('analyzing');
+    this.message.set('');
+
+    const menuItems = this.readyItems() as unknown as MenuItem[];
+    this.salesService.analyseSalesData(menuItems, sales.rows, this.periodDays()).subscribe({
+      next: (result) => {
+        this.analysisResult.set(result);
+        this.uploadState.set('results');
+        this.expandedSugId.set(0);
+        this.dismissedIds.set([]);
+      },
+      error: (err) => {
+        this.message.set(err instanceof Error ? err.message : 'Analysis failed. Please try again.');
+        this.uploadState.set('preview');
+      }
+    });
+  }
+
+  resetUpload(): void {
+    this.parsedSales.set(null);
+    this.uploadState.set('idle');
+    this.uploadError.set('');
+    this.showAllRows.set(false);
   }
 
   resetAnalysis(): void {
     this.analysisResult.set(null);
     this.dismissedIds.set([]);
+    this.resetUpload();
+  }
+
+  loadDemoSales(): void {
+    if (this.isLocked() || this.uploadState() === 'analyzing') return;
+    this.uploadState.set('analyzing');
+    this.message.set('');
+
+    // Build fake parsed rows from DEMO_SALES
+    const menu = this.menuItems();
+    const quantities: Record<string, number> = {};
+    for (const item of menu) {
+      const dailyAvg = Math.round((DEMO_SALES[item.id] ?? 0) / 30);
+      quantities[item.name] = dailyAvg;
+    }
+
+    // Create 30 synthetic rows
+    const rows: ParsedSalesRow[] = Array.from({ length: 30 }, (_, i) => ({
+      rowIndex: i + 1,
+      date: `${String(i + 1).padStart(2, '0')}/05/2026`,
+      dateValid: true,
+      quantities: { ...quantities },
+      cellErrors: []
+    }));
+
+    const matchedNames = menu.filter(m => m.status === 'ready').map(m => m.name);
+    const columns = matchedNames.map(name => ({ header: name, matched: true, matchedName: name, columnIndex: 0 }));
+
+    const fakeParsed: ParsedSalesResult = {
+      columns,
+      rows,
+      matchedCount: matchedNames.length,
+      unmatchedCount: 0,
+      blockingErrors: [],
+      warnings: []
+    };
+
+    this.parsedSales.set(fakeParsed);
+    this.periodDays.set(30);
+
+    const menuItemsForAnalysis = this.readyItems() as unknown as MenuItem[];
+    this.salesService.analyseSalesData(menuItemsForAnalysis, rows, 30).subscribe({
+      next: (result) => {
+        this.analysisResult.set(result);
+        this.uploadState.set('results');
+        this.expandedSugId.set(0);
+        this.dismissedIds.set([]);
+      },
+      error: (err) => {
+        this.message.set(err instanceof Error ? err.message : 'Analysis failed. Please try again.');
+        this.uploadState.set('idle');
+      }
+    });
+  }
+
+  downloadTemplate(): void {
+    this.exportService.downloadSalesTemplate(this.readyItems().map(i => i.name));
+  }
+
+  exportFullReport(): void {
+    const result = this.analysisResult();
+    if (!result) return;
+    this.exportService.downloadFullReport(
+      this.menuItems() as unknown as MenuItem[],
+      result
+    );
   }
 
   toggleSuggestion(idx: number): void  { this.expandedSugId.set(this.expandedSugId() === idx ? -1 : idx); }
@@ -213,8 +329,7 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
   trackByName(_: number, item: { menu_item: string }): string { return item.menu_item; }
   trackByIdx(idx: number): number { return idx; }
 
-  /* Build per-item analysis rows.
-     Uses DEMO_SALES keyed by item id for 30-day unit counts. */
+  /* Build per-item analysis rows — kept for possible internal reference only */
   private buildItems(): ProfitabilityItem[] {
     const ready = this.readyItems();
     const raw = ready.map((item) => {
@@ -236,19 +351,6 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
     const medianMargin = this.median(raw.map((i) => i.margin_pct));
     const medianUnits  = this.median(raw.map((i) => i.units_sold));
     return raw.map((i) => ({ ...i, classification: this.classify(i.margin_pct, i.units_sold, medianMargin, medianUnits) }));
-  }
-
-  /* Use pre-baked suggestions from the design's SAMPLE_SUGGESTIONS */
-  private buildSuggestions(): AiSuggestion[] {
-    return DEMO_SUGGESTIONS.map((s, i) => ({
-      id:               i,
-      suggestion_type:  s.suggestion_type as AiSuggestion['suggestion_type'],
-      title:            s.title,
-      description:      s.description,
-      items_involved:   s.items_involved,
-      estimated_impact: s.estimated_impact,
-      review_status:    'new' as const
-    }));
   }
 
   private classify(margin: number, units: number, medianMargin: number, medianUnits: number): ItemClassification {

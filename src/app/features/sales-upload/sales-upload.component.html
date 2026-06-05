@@ -7,16 +7,16 @@
       <div class="page-sub">
         @if (isLocked()) {
           Match daily sales data against your menu to see what's actually moving — and why.
-        } @else if (hasSales()) {
-          30-day performance, classified by margin × volume.
+        } @else if (uploadState() === 'results') {
+          {{ periodDays() }}-day performance, classified by margin × volume.
         } @else {
           Upload one calendar month of sales data to begin.
         }
       </div>
     </div>
     <div class="page-actions">
-      @if (hasSales()) {
-        <button type="button" class="btn btn-ghost">
+      @if (uploadState() === 'results') {
+        <button type="button" class="btn btn-ghost" (click)="exportFullReport()">
           <img src="ds/icons/data-export.svg" alt="" width="16" height="16" /> Export full report
         </button>
         <button type="button" class="btn btn-ghost" (click)="resetAnalysis()">
@@ -56,64 +56,149 @@
       <div class="notice">{{ message() }}</div>
     }
 
-    @if (!hasSales()) {
+    @if (uploadState() === 'idle' || uploadState() === 'preview' || uploadState() === 'analyzing') {
       <!-- Upload panel -->
       <div class="panel">
         <div class="panel-head">
           <div class="panel-title">Upload sales file</div>
           <div class="panel-head-right">
-            <a class="link"><img src="ds/icons/download.svg" alt="" width="14" height="14" /> Download sales template</a>
+            <a class="link" (click)="downloadTemplate()"><img src="ds/icons/download.svg" alt="" width="14" height="14" /> Download sales template</a>
           </div>
         </div>
         <div class="panel-body">
-          <div class="drop"
-               [class.drop-over]="dragOver()"
-               [class.drop-busy]="analyzing()"
-               (click)="analyzing() ? null : runAnalysis()"
-               (dragover)="$event.preventDefault(); dragOver.set(true)"
-               (dragleave)="dragOver.set(false)"
-               (drop)="$event.preventDefault(); dragOver.set(false); runAnalysis()">
-            @if (analyzing()) {
+
+          @if (uploadState() === 'analyzing') {
+            <!-- Analyzing spinner -->
+            <div class="drop drop-busy">
               <div class="drop-glyph drop-glyph-busy">
                 <img src="ds/icons/loading.svg" alt="" width="28" height="28" />
               </div>
               <div class="drop-title">Analyzing sales · matching to menu · generating suggestions…</div>
-              <div class="drop-sub">Claude is reviewing 30 days of data against {{ readyItems().length }} menu items.</div>
-            } @else {
-              <div class="drop-glyph">
-                <img src="ds/icons/data.svg" alt="" width="28" height="28" />
-              </div>
-              <div class="drop-title">Drop your sales Excel file here</div>
-              <div class="drop-sub">.xlsx or .xls · 1–31 day rows · column 1 = Date, remaining columns = menu item names</div>
-              <div class="drop-cta">
-                <button type="button" class="btn btn-secondary" (click)="$event.stopPropagation()">Browse files</button>
-                <span class="drop-or">or</span>
-                <a class="link" (click)="$event.stopPropagation(); runAnalysis()">Load demo 30-day sales</a>
-              </div>
+              <div class="drop-sub">Claude is reviewing {{ periodDays() }} days of data against {{ readyItems().length }} menu items.</div>
+            </div>
+          } @else {
+            <!-- File drop zone -->
+            <app-file-drop-zone
+              title="Drop your sales Excel file here"
+              description=".xlsx or .xls · 1–31 day rows · column 1 = Date, remaining columns = menu item names"
+              [maxSizeMb]="5"
+              (fileSelected)="onSalesFileSelected($event)"
+              (fileSizeError)="uploadError.set($event)"
+            />
+            @if (uploadError()) {
+              <p class="upload-error">{{ uploadError() }}</p>
             }
-          </div>
+            <a class="link" style="font-size:12px" (click)="loadDemoSales()">Load demo 30-day sales</a>
+          }
 
-          <!-- Sales preview -->
-          <div class="sales-preview">
-            <div class="sales-preview-label">Expected file format</div>
-            <table class="sales-preview-table">
-              <thead>
-                <tr>
-                  <th>Date</th><th>Nasi Goreng</th><th>Mie Ayam Bakso</th><th>Es Teh Manis</th><th>…</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr><td>01/05/2026</td><td>14</td><td>12</td><td>19</td><td>…</td></tr>
-                <tr><td>02/05/2026</td><td>11</td><td>15</td><td>22</td><td>…</td></tr>
-                <tr><td>03/05/2026</td><td>16</td><td>10</td><td>18</td><td>…</td></tr>
-                <tr class="sales-preview-fade"><td colspan="5">… up to 31 day rows …</td></tr>
-              </tbody>
-            </table>
-          </div>
+          <!-- Preview section (shown below drop zone when in preview state) -->
+          @if (uploadState() === 'preview' && parsedSales()) {
+            <div class="upload-preview">
+
+              <p class="upload-notice">
+                Sales data loaded: {{ parsedSales()!.rows.length }} days,
+                {{ parsedSales()!.matchedCount }} menu item(s) matched.
+              </p>
+
+              @for (err of parsedSales()!.blockingErrors; track err) {
+                <p class="upload-error">{{ err }}</p>
+              }
+
+              <!-- Column matching badges -->
+              <div class="col-match-row">
+                @for (col of parsedSales()!.columns; track col.header) {
+                  <span class="col-badge"
+                        [class.col-badge-match]="col.matched"
+                        [class.col-badge-no-match]="!col.matched"
+                        [title]="col.matched ? 'Matched: ' + col.matchedName : 'Not found in your menu — will be ignored'">
+                    {{ col.header }}
+                  </span>
+                }
+              </div>
+              @for (col of parsedSales()!.columns; track col.header) {
+                @if (!col.matched) {
+                  <p class="col-warn">Column "{{ col.header }}" does not match any known menu item. It will be ignored.</p>
+                }
+              }
+
+              <!-- Preview table -->
+              <div class="preview-table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      @for (col of parsedSales()!.columns; track col.header) {
+                        @if (col.matched) {
+                          <th>{{ col.header }}</th>
+                        }
+                      }
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (row of previewRows(); track row.rowIndex) {
+                      <tr [class.row-error]="row.cellErrors.length > 0 || !row.dateValid">
+                        <td>{{ row.date }}</td>
+                        @for (col of parsedSales()!.columns; track col.header) {
+                          @if (col.matched) {
+                            <td [class.cell-error-highlight]="hasCellError(row, col.header)">
+                              {{ row.quantities[col.header] ?? 0 }}
+                            </td>
+                          }
+                        }
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+                @if (parsedSales()!.rows.length > 5) {
+                  <button type="button" class="link-button" (click)="showAllRows.set(!showAllRows())">
+                    {{ showAllRows() ? 'Show less' : 'Show all ' + parsedSales()!.rows.length + ' rows' }}
+                  </button>
+                }
+              </div>
+
+              <!-- Warnings -->
+              @for (w of parsedSales()!.warnings; track w) {
+                <p class="upload-warning">{{ w }}</p>
+              }
+
+              <!-- Actions -->
+              <div class="preview-actions">
+                <button type="button" class="btn btn-primary"
+                        [disabled]="!canAnalyse()"
+                        (click)="confirmAndAnalyse()">
+                  <span style="font-size:14px">✦</span>
+                  Confirm &amp; Analyse
+                </button>
+                <button type="button" class="btn btn-ghost" (click)="resetUpload()">Cancel</button>
+              </div>
+
+            </div>
+          }
+
+          @if (uploadState() === 'idle') {
+            <!-- Expected file format hint -->
+            <div class="sales-preview">
+              <div class="sales-preview-label">Expected file format</div>
+              <table class="sales-preview-table">
+                <thead>
+                  <tr>
+                    <th>Date</th><th>Nasi Goreng</th><th>Mie Ayam Bakso</th><th>Es Teh Manis</th><th>…</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td>01/05/2026</td><td>14</td><td>12</td><td>19</td><td>…</td></tr>
+                  <tr><td>02/05/2026</td><td>11</td><td>15</td><td>22</td><td>…</td></tr>
+                  <tr><td>03/05/2026</td><td>16</td><td>10</td><td>18</td><td>…</td></tr>
+                  <tr class="sales-preview-fade"><td colspan="5">… up to 31 day rows …</td></tr>
+                </tbody>
+              </table>
+            </div>
+          }
+
         </div>
       </div>
 
-    } @else {
+    } @else if (uploadState() === 'results') {
       @if (analysisResult(); as analysis) {
 
         <!-- Verdict card -->
@@ -125,7 +210,7 @@
             </div>
             <div class="verdict-headline">{{ verdictHeadline(analysis.summary.verdict) }}</div>
             <div class="verdict-body">
-              Over the last 30 days, {{ totalUnits() | number }} units sold across {{ readyItems().length }} items produced
+              Over the last {{ periodDays() }} days, {{ totalUnits() | number }} units sold across {{ readyItems().length }} items produced
               <strong>{{ fmtIDR(analysis.summary.total_revenue_idr) }}</strong> in revenue against
               <strong>{{ fmtIDR(analysis.summary.total_cost_idr) }}</strong> in estimated ingredient cost.
               Overall gross margin: <strong>{{ analysis.summary.overall_margin_pct | number:'1.0-1' }}%</strong>.
@@ -147,7 +232,7 @@
             </div>
             <div class="verdict-stat">
               <div class="verdict-stat-label">Period</div>
-              <div class="verdict-stat-num">30 days</div>
+              <div class="verdict-stat-num">{{ periodDays() }} days</div>
               <div class="verdict-stat-sub">{{ totalUnits() | number }} units</div>
             </div>
           </div>
