@@ -201,6 +201,13 @@
     } @else if (uploadState() === 'results') {
       @if (analysisResult(); as analysis) {
 
+        <!-- AC8.5: Excluded items notice -->
+        @if (excludedItemCount() > 0) {
+          <div class="notice notice-warning">
+            {{ excludedItemCount() }} item(s) excluded from totals due to incomplete cost data.
+          </div>
+        }
+
         <!-- Verdict card -->
         <div class="verdict-card" [ngClass]="'verdict-' + analysis.summary.verdict">
           <div class="verdict-left">
@@ -267,6 +274,9 @@
             </div>
           </div>
           <div class="suggestions">
+            @if (allStar() && analysis.suggestions.length === 0) {
+              <div class="notice">Your menu is performing well across the board. No priority actions at this time.</div>
+            }
             @for (sug of analysis.suggestions; track sug.title; let i = $index) {
               @if (!isDismissed(i)) {
                 <div class="sug-card" [class.sug-expanded]="isExpanded(i)">

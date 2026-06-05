@@ -106,6 +106,16 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
   readonly readyItems = computed(() => this.menuItems().filter((i) => i.status === 'ready' && i.est_cost_idr !== null));
   readonly isLocked = computed(() => this.readyItems().length === 0);
 
+  readonly excludedItemCount = computed(() =>
+    this.menuItems().filter(i => i.status === 'incomplete').length
+  );
+
+  readonly allStar = computed(() => {
+    const result = this.analysisResult();
+    if (!result || !result.items.length) return false;
+    return result.items.every(i => i.classification === 'star');
+  });
+
   readonly canAnalyse = computed(() => {
     const s = this.parsedSales();
     if (!s) return false;
@@ -219,10 +229,26 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
     const sales = this.parsedSales();
     if (!sales || !this.canAnalyse()) return;
 
+    // AC9.6: Guard for fewer than 3 ready menu items
+    const menuItems = this.readyItems() as unknown as MenuItem[];
+    if (menuItems.length < 3) {
+      this.message.set('Add more menu items to receive personalised suggestions. At least 3 items are needed.');
+      this.uploadState.set('preview');
+      return;
+    }
+
+    // AC8.6: Guard for no sales recorded
+    const totalUnitsCheck = sales.rows.reduce((sum, row) => {
+      return sum + Object.values(row.quantities).reduce((s, q) => s + q, 0);
+    }, 0);
+    if (totalUnitsCheck === 0) {
+      this.message.set('No sales recorded for this period. Please check your data.');
+      this.uploadState.set('preview');
+      return;
+    }
+
     this.uploadState.set('analyzing');
     this.message.set('');
-
-    const menuItems = this.readyItems() as unknown as MenuItem[];
     this.salesService.analyseSalesData(menuItems, sales.rows, this.periodDays()).subscribe({
       next: (result) => {
         this.analysisResult.set(result);
