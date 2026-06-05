@@ -51,7 +51,7 @@ export class EnrichmentService {
         map((text) => this.parseAndEnrich(item, text)),
         catchError((err: unknown) => {
           const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-          return of({ ...item, status: 'failed' as const, _error: errorMessage } as MenuItem);
+          return of({ ...item, status: 'failed' as const, _error: errorMessage });
         })
       );
   }
@@ -99,7 +99,7 @@ export class EnrichmentService {
         map((text) => this.parseAndEnrich({ ...item, alternative_name: alternativeName }, text)),
         catchError((err: unknown) => {
           const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-          return of({ ...item, status: 'failed' as const, _error: errorMessage } as MenuItem);
+          return of({ ...item, status: 'failed' as const, _error: errorMessage });
         })
       );
   }

@@ -18,6 +18,7 @@ export interface ParsedMenuResult {
 
 export interface ParsedSalesColumn {
   header: string;
+  columnIndex: number;
   matched: boolean;
   matchedName?: string;
 }
@@ -164,6 +165,7 @@ export class ExcelParserService {
             );
             columns.push({
               header,
+              columnIndex: c,
               matched: !!matchedName,
               matchedName
             });
@@ -204,7 +206,7 @@ export class ExcelParserService {
             const quantities: Record<string, number> = {};
             for (let c = 0; c < columns.length; c++) {
               const col = columns[c];
-              const cellRaw = String(row[c + 1] ?? '').trim();
+              const cellRaw = String(row[col.columnIndex] ?? '').trim();
 
               if (!cellRaw) {
                 quantities[col.header] = 0;

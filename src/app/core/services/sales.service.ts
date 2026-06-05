@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { map, Observable } from 'rxjs';
+import { map, Observable, throwError } from 'rxjs';
 
 import { MenuItem } from '../models/menu-item.model';
 import {
@@ -104,27 +104,32 @@ export class SalesService {
       `Each item has: menu_item, selling_price_idr, est_cost_idr, gross_margin_pct, units_sold.\n` +
       `Return the profitability assessment and suggestions JSON.`;
 
-    return this.claudeApi.call({ systemPrompt: SYSTEM_PROMPT, userPrompt, temperature: 0.2 }).pipe(
+    return this.claudeApi.call({ systemPrompt: SYSTEM_PROMPT, userPrompt, temperature: 0.2, maxTokens: 4096 }).pipe(
       map((text) => this.parseAnalysisResponse(text, menuData))
     );
   }
 
   /** @deprecated Use analyseSalesData instead */
   uploadSales(_sessionKey: string, _file: File): Observable<never> {
-    throw new Error('uploadSales is not supported in the client-side implementation. Use ExcelParserService.parseSalesFile instead.');
+    return throwError(() => new Error('Not implemented'));
   }
 
   /** @deprecated Use analyseSalesData instead */
   analyseSales(_salesUploadId: number): Observable<never> {
-    throw new Error('analyseSales is not supported in the client-side implementation. Use analyseSalesData instead.');
+    return throwError(() => new Error('Not implemented'));
   }
 
   private parseAnalysisResponse(
     text: string,
     menuData: MenuDataEntry[]
   ): ProfitabilityAnalysisResult {
-    const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
-    const parsed = JSON.parse(cleaned) as ClaudeAnalysisResponse;
+    let parsed: ClaudeAnalysisResponse;
+    try {
+      const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+      parsed = JSON.parse(cleaned) as ClaudeAnalysisResponse;
+    } catch {
+      throw new Error('Failed to parse analysis response from Claude. Please try again.');
+    }
 
     // Build classification map from Claude's response
     const classificationSource = parsed.item_classifications ?? parsed.items ?? [];

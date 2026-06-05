@@ -17,6 +17,7 @@ export interface MenuItem {
   gross_margin_pct?: number | null;
   status: MenuItemStatus;
   ingredients?: Ingredient[];
+  _error?: string;
 }
 
 export interface MenuUploadResult {

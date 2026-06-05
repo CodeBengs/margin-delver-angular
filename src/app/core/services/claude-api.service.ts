@@ -7,6 +7,7 @@ export interface ClaudeCallParams {
   userPrompt: string;
   temperature?: number;
   model?: string;
+  maxTokens?: number;
 }
 
 interface ClaudeApiRequest {
@@ -49,7 +50,7 @@ export class ClaudeApiService {
 
     const body: ClaudeApiRequest = {
       model,
-      max_tokens: 1024,
+      max_tokens: params.maxTokens ?? 4096,
       temperature: params.temperature ?? 0.2,
       system: params.systemPrompt,
       messages: [{ role: 'user', content: params.userPrompt }]
