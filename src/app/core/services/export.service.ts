@@ -1,25 +1,18 @@
-import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Observable } from 'rxjs';
 
-import { environment } from '../../../environments/environment';
+import { MenuItem } from '../models/menu-item.model';
+import { ProfitabilityAnalysisResult } from '../models/profitability.model';
+import { ExcelExportService } from './excel-export.service';
 
 @Injectable({ providedIn: 'root' })
 export class ExportService {
-  private readonly apiBaseUrl = environment.apiBaseUrl;
+  constructor(private readonly excelExport: ExcelExportService) {}
 
-  constructor(private readonly http: HttpClient) {}
-
-  downloadMarginReport(sessionKey: string): Observable<Blob> {
-    return this.http.get(`${this.apiBaseUrl}/menu-sessions/${sessionKey}/export-margin`, {
-      responseType: 'blob'
-    });
+  downloadMarginReport(items: MenuItem[]): void {
+    this.excelExport.exportMarginReport(items);
   }
 
-  downloadFullReport(profitabilityResultId: number): Observable<Blob> {
-    return this.http.get(`${this.apiBaseUrl}/profitability-results/${profitabilityResultId}/export-report`, {
-      responseType: 'blob'
-    });
+  downloadFullReport(items: MenuItem[], analysis: ProfitabilityAnalysisResult): void {
+    this.excelExport.exportFullReport(items, analysis);
   }
 }
-
