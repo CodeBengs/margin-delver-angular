@@ -1,7 +1,6 @@
 import { Component, computed, EventEmitter, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
-import { ExcelExportService } from '../../../core/services/excel-export.service';
 import { ExcelParserService, ParsedMenuResult, ParsedMenuRow } from '../../../core/services/excel-parser.service';
 import { FileDropZoneComponent } from '../../../shared/components/file-drop-zone/file-drop-zone.component';
 
@@ -37,8 +36,7 @@ export class MenuUploadComponent {
   });
 
   constructor(
-    private readonly excelParser: ExcelParserService,
-    private readonly excelExport: ExcelExportService
+    private readonly excelParser: ExcelParserService
   ) {}
 
   onFileSizeError(msg: string): void {
@@ -53,6 +51,8 @@ export class MenuUploadComponent {
       this.parsedResult.set(result);
       const hasIdr = result.rows.some((r) => this.isIdrFormatted(r.priceRaw));
       this.state.set(hasIdr ? 'idr-confirm' : 'preview');
+    } catch {
+      this.sizeError.set('Could not parse the file. Make sure it is a valid .xlsx or .xls file.');
     } finally {
       this.isLoading.set(false);
     }
@@ -72,10 +72,6 @@ export class MenuUploadComponent {
     this.isLoading.set(false);
   }
 
-  downloadTemplate(): void {
-    this.excelExport.exportMenuTemplate();
-  }
-
   rowIssues(row: ParsedMenuRow): string {
     return row.errors.map((e) => {
       switch (e) {
@@ -88,6 +84,7 @@ export class MenuUploadComponent {
   }
 
   private isIdrFormatted(priceRaw: string): boolean {
-    return /Rp|[.,]/.test(priceRaw);
+    // Matches "Rp 25.000" style OR bare thousands-dot "25.000" (no decimal part)
+    return /Rp/i.test(priceRaw) || /^\d{1,3}(\.\d{3})+$/.test(priceRaw.trim());
   }
 }

@@ -51,44 +51,46 @@
 }
 
 @if (state() === 'preview') {
-  @if (parsedResult()!.headerDetected) {
-    <p class="upload-notice">Header row detected and skipped.</p>
-  }
-  @if (parsedResult()!.totalRows > 100) {
-    <div class="upload-warning">
-      Large menu detected ({{ parsedResult()!.totalRows }} items). Processing may take up to 30 seconds.
+  @if (parsedResult(); as result) {
+    @if (result.headerDetected) {
+      <p class="upload-notice">Header row detected and skipped.</p>
+    }
+    @if (result.totalRows > 100) {
+      <div class="upload-warning">
+        Large menu detected ({{ result.totalRows }} items). Processing may take up to 30 seconds.
+      </div>
+    }
+
+    <table class="upload-preview-table">
+      <thead>
+        <tr>
+          <th>Row #</th>
+          <th>Menu Name</th>
+          <th>Selling Price (IDR)</th>
+          <th>Issues</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of result.rows; track row.rowIndex) {
+          <tr [class.row-error]="row.errors.length > 0" [class.row-warning]="row.isDuplicate && row.errors.length === 0">
+            <td>{{ row.rowIndex }}</td>
+            <td>{{ row.name }}</td>
+            <td>{{ row.price !== null ? (row.price | number) : row.priceRaw }}</td>
+            <td>{{ rowIssues(row) }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+
+    @if (blockingRows().length > 0) {
+      <p class="upload-error">{{ blockingRows().length }} row(s) have errors. Please correct and re-upload.</p>
+    }
+
+    <div class="upload-actions">
+      <button type="button" class="btn btn-primary" [disabled]="!canConfirm()" (click)="onConfirm()">
+        Import {{ result.rows.length - blockingRows().length }} items
+      </button>
+      <button type="button" class="btn btn-ghost" (click)="onReset()">Cancel</button>
     </div>
   }
-
-  <table class="upload-preview-table">
-    <thead>
-      <tr>
-        <th>Row #</th>
-        <th>Menu Name</th>
-        <th>Selling Price (IDR)</th>
-        <th>Issues</th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (row of parsedResult()!.rows; track row.rowIndex) {
-        <tr [class.row-error]="row.errors.length > 0" [class.row-warning]="row.isDuplicate && row.errors.length === 0">
-          <td>{{ row.rowIndex }}</td>
-          <td>{{ row.name }}</td>
-          <td>{{ row.price !== null ? (row.price | number) : row.priceRaw }}</td>
-          <td>{{ rowIssues(row) }}</td>
-        </tr>
-      }
-    </tbody>
-  </table>
-
-  @if (blockingRows().length > 0) {
-    <p class="upload-error">{{ blockingRows().length }} row(s) have errors. Please correct and re-upload.</p>
-  }
-
-  <div class="upload-actions">
-    <button type="button" class="btn btn-primary" [disabled]="!canConfirm()" (click)="onConfirm()">
-      Import {{ parsedResult()!.rows.length - blockingRows().length }} items
-    </button>
-    <button type="button" class="btn btn-ghost" (click)="onReset()">Cancel</button>
-  </div>
 }
