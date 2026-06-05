@@ -62,6 +62,7 @@ export class LandingComponent implements OnInit, OnDestroy {
   readonly retryLoading: WritableSignal<Record<number, boolean>> = signal({});
   readonly retryError: WritableSignal<Record<number, string>> = signal({});
   readonly failedCount = computed(() => this.menuItems().filter(i => i.status === 'failed').length);
+  readonly ingredientErrors = signal<Record<string, string>>({});
 
   constructor(
     private readonly exportService: ExportService,
@@ -282,6 +283,26 @@ export class LandingComponent implements OnInit, OnDestroy {
   }
 
   updateIngredient(item: DraftMenuItem, ing: DraftIngredient, key: keyof DraftIngredient, value: string | number | null): void {
+    if (key === 'quantity') {
+      const num = Number(value);
+      if (value === '' || value === null || num <= 0) {
+        this.ingredientErrors.update(e => ({ ...e, [`${item.id}_${ing.id}_qty`]: 'Quantity must be greater than 0.' }));
+        return;
+      }
+      this.ingredientErrors.update(e => { const n = { ...e }; delete n[`${item.id}_${ing.id}_qty`]; return n; });
+    }
+
+    if (key === 'unit_cost_idr') {
+      if (value !== null) {
+        const num = Number(value);
+        if (value === '' || num <= 0) {
+          this.ingredientErrors.update(e => ({ ...e, [`${item.id}_${ing.id}_cost`]: 'Unit cost must be greater than 0.' }));
+          return;
+        }
+      }
+      this.ingredientErrors.update(e => { const n = { ...e }; delete n[`${item.id}_${ing.id}_cost`]; return n; });
+    }
+
     const ingredients = item.ingredients.map((cur) => {
       if (cur.id !== ing.id) return cur;
       const upd = { ...cur, [key]: value } as DraftIngredient;
@@ -292,6 +313,10 @@ export class LandingComponent implements OnInit, OnDestroy {
       return upd;
     });
     this.updateItem({ ...item, ingredients });
+  }
+
+  ingredientError(itemId: number, ingId: number, field: 'qty' | 'cost'): string {
+    return this.ingredientErrors()[`${itemId}_${ingId}_${field}`] ?? '';
   }
 
   marginClass(item: DraftMenuItem): string {

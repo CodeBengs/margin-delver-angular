@@ -285,9 +285,19 @@
                         @for (ing of item.ingredients; track ing.id; let idx = $index) {
                           <tr>
                             <td><input class="cell-input" placeholder="Ingredient name" [ngModel]="ing.name" (ngModelChange)="updateIngredient(item, ing, 'name', $event)" /></td>
-                            <td class="num-col"><input class="cell-input cell-input-num" type="number" [ngModel]="ing.quantity" (ngModelChange)="updateIngredient(item, ing, 'quantity', $event)" /></td>
+                            <td class="num-col">
+                              <input class="cell-input cell-input-num" type="number" [ngModel]="ing.quantity" (ngModelChange)="updateIngredient(item, ing, 'quantity', $event)" />
+                              @if (ingredientError(item.id, ing.id, 'qty')) {
+                                <div class="cell-error">{{ ingredientError(item.id, ing.id, 'qty') }}</div>
+                              }
+                            </td>
                             <td><input class="cell-input cell-input-unit" [ngModel]="ing.unit" (ngModelChange)="updateIngredient(item, ing, 'unit', $event)" /></td>
-                            <td class="num-col"><input class="cell-input cell-input-num" type="number" [ngModel]="ing.unit_cost_idr" (ngModelChange)="updateIngredient(item, ing, 'unit_cost_idr', $event)" /></td>
+                            <td class="num-col">
+                              <input class="cell-input cell-input-num" type="number" [ngModel]="ing.unit_cost_idr" (ngModelChange)="updateIngredient(item, ing, 'unit_cost_idr', $event)" />
+                              @if (ingredientError(item.id, ing.id, 'cost')) {
+                                <div class="cell-error">{{ ingredientError(item.id, ing.id, 'cost') }}</div>
+                              }
+                            </td>
                             <td class="num-col cell-calc">{{ fmtIDR(ing.total_cost_idr) }}</td>
                             <td>
                               <button type="button" class="icon-btn-bare" title="Remove ingredient" (click)="openIngDeleteConfirm(item, idx)">
@@ -296,7 +306,7 @@
                             </td>
                           </tr>
                         } @empty {
-                          <tr><td colspan="6" class="empty-row">No ingredients yet. Add at least one to calculate margin.</td></tr>
+                          <tr><td colspan="6" class="empty-row">No ingredients listed. Add at least one ingredient to calculate margin.</td></tr>
                         }
                       </tbody>
                     </table>
