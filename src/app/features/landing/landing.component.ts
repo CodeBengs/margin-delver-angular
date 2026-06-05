@@ -226,6 +226,15 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   trackById(_: number, item: { id: number }): number { return item.id; }
 
+  onEditNameInput(event: Event): void {
+    this.editNameValue.set((event.target as HTMLInputElement).value);
+  }
+
+  onEditPriceInput(event: Event): void {
+    const v = (event.target as HTMLInputElement).valueAsNumber;
+    this.editPriceValue.set(Number.isFinite(v) ? v : null);
+  }
+
   startEditName(event: Event, item: DraftMenuItem): void {
     event.stopPropagation();
     this.editingNameId.set(item.id);
@@ -234,6 +243,7 @@ export class LandingComponent implements OnInit, OnDestroy {
   }
 
   saveEditName(item: DraftMenuItem): void {
+    if (this.editingNameId() !== item.id) return;
     const newName = this.editNameValue().trim();
     if (!newName) {
       this.cancelEditName();
@@ -265,6 +275,7 @@ export class LandingComponent implements OnInit, OnDestroy {
   }
 
   saveEditPrice(item: DraftMenuItem): void {
+    if (this.editingPriceId() !== item.id) return;
     const newPrice = this.editPriceValue();
     if (newPrice === null || newPrice <= 0) {
       this.cancelEditPrice();

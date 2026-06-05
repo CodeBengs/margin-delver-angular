@@ -138,7 +138,7 @@
                   @if (editingNameId() === item.id) {
                     <input class="cell-input-inline"
                            [value]="editNameValue()"
-                           (input)="editNameValue.set($any($event.target).value)"
+                           (input)="onEditNameInput($event)"
                            (blur)="saveEditName(item)"
                            (keydown.enter)="saveEditName(item)"
                            (keydown.escape)="cancelEditName()"
@@ -156,7 +156,7 @@
                 @if (editingPriceId() === item.id) {
                   <input class="cell-input-inline cell-input-inline-num" type="number"
                          [value]="editPriceValue()"
-                         (input)="editPriceValue.set($any($event.target).valueAsNumber)"
+                         (input)="onEditPriceInput($event)"
                          (blur)="saveEditPrice(item)"
                          (keydown.enter)="saveEditPrice(item)"
                          (keydown.escape)="cancelEditPrice()"
