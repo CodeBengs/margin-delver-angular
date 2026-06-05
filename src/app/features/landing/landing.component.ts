@@ -40,8 +40,6 @@ export class LandingComponent implements OnInit, OnDestroy {
   readonly dragOver = signal(false);
   readonly confirmDeleteItem = signal<DraftMenuItem | null>(null);
   readonly confirmDeleteIngredient = signal<{ item: DraftMenuItem; ingIdx: number } | null>(null);
-  readonly uploadNotice = signal('');
-
   readonly hasMenu = computed(() => this.menuItems().length > 0);
   readonly readyItems = computed(() => this.menuItems().filter((i) => i.status === 'ready'));
   readonly readyCount = computed(() => this.readyItems().length);
@@ -114,11 +112,6 @@ export class LandingComponent implements OnInit, OnDestroy {
       };
       newItems.push(item);
       idx++;
-    }
-    if (result.headerDetected) {
-      this.uploadNotice.set('Header row detected and skipped.');
-    } else {
-      this.uploadNotice.set('');
     }
     this.menuItems.update((items) => [...items, ...newItems]);
     this.persist();

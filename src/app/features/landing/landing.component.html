@@ -63,9 +63,6 @@
 
     <div class="panel-body">
       @if (activeTab() === 'upload') {
-        @if (uploadNotice()) {
-          <p class="upload-notice">{{ uploadNotice() }}</p>
-        }
         <app-menu-upload (itemsUploaded)="onItemsUploaded($event)" />
       } @else {
         <div class="manual-form">

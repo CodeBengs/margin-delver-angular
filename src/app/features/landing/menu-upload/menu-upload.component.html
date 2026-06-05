@@ -44,7 +44,7 @@
       </table>
     }
     <div class="upload-actions">
-      <button type="button" class="btn btn-primary" (click)="onConfirm()">Confirm import</button>
+      <button type="button" class="btn btn-primary" [disabled]="!canConfirm()" (click)="onConfirm()">Confirm import</button>
       <button type="button" class="btn btn-ghost" (click)="onReset()">Cancel</button>
     </div>
   </div>
