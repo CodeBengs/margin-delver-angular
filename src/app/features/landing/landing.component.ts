@@ -226,13 +226,12 @@ export class LandingComponent implements OnInit, OnDestroy {
         this.persist();
       },
       error: (err) => {
-        const newRetryCount = (item.retryCount ?? 0) + 1;
         // Update retryCount even on failure
         this.menuItems.update(items => items.map(cur =>
-          cur.id === item.id ? { ...cur, retryCount: newRetryCount } : cur
+          cur.id === item.id ? { ...cur, retryCount: (cur.retryCount ?? 0) + 1 } : cur
         ));
         this.retryLoading.update(m => ({ ...m, [item.id]: false }));
-        this.retryError.update(m => ({ ...m, [item.id]: err.message ?? 'Retry failed. Try a different name.' }));
+        this.retryError.update(m => ({ ...m, [item.id]: err instanceof Error ? err.message : 'Retry failed. Try a different name.' }));
         this.persist();
       }
     });
