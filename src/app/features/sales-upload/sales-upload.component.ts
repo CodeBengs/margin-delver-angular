@@ -4,7 +4,7 @@ import { RouterLink } from '@angular/router';
 
 import { DEMO_SALES } from '../../core/demo-data';
 import { MenuItem } from '../../core/models/menu-item.model';
-import { AiSuggestion, ItemClassification, ProfitabilityAnalysisResult, ProfitabilityItem } from '../../core/models/profitability.model';
+import { AiSuggestion, ItemClassification, ProfitabilityAnalysisResult } from '../../core/models/profitability.model';
 import { ExcelParserService, ParsedSalesResult, ParsedSalesRow } from '../../core/services/excel-parser.service';
 import { ExportService } from '../../core/services/export.service';
 import { SalesService } from '../../core/services/sales.service';
@@ -105,7 +105,6 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
 
   readonly readyItems = computed(() => this.menuItems().filter((i) => i.status === 'ready' && i.est_cost_idr !== null));
   readonly isLocked = computed(() => this.readyItems().length === 0);
-  readonly hasSales = computed(() => this.analysisResult() !== null);
 
   readonly canAnalyse = computed(() => {
     const s = this.parsedSales();
@@ -203,7 +202,6 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
 
   async onSalesFileSelected(file: File): Promise<void> {
     this.uploadError.set('');
-    this.uploadState.set('idle'); // reset any previous preview
     try {
       const knownNames = this.readyItems().map(i => i.name);
       const result = await this.excelParser.parseSalesFile(file, knownNames);
@@ -212,6 +210,7 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
       this.showAllRows.set(false);
       this.uploadState.set('preview');
     } catch {
+      this.uploadState.set('idle');
       this.uploadError.set('Could not parse the file. Make sure it is a valid .xlsx or .xls file.');
     }
   }
@@ -257,7 +256,7 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
     this.message.set('');
 
     // Build fake parsed rows from DEMO_SALES
-    const menu = this.menuItems();
+    const menu = this.readyItems();
     const quantities: Record<string, number> = {};
     for (const item of menu) {
       const dailyAvg = Math.round((DEMO_SALES[item.id] ?? 0) / 30);
@@ -273,7 +272,7 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
       cellErrors: []
     }));
 
-    const matchedNames = menu.filter(m => m.status === 'ready').map(m => m.name);
+    const matchedNames = menu.map(m => m.name);
     const columns = matchedNames.map(name => ({ header: name, matched: true, matchedName: name, columnIndex: 0 }));
 
     const fakeParsed: ParsedSalesResult = {
@@ -328,44 +327,6 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
 
   trackByName(_: number, item: { menu_item: string }): string { return item.menu_item; }
   trackByIdx(idx: number): number { return idx; }
-
-  /* Build per-item analysis rows — kept for possible internal reference only */
-  private buildItems(): ProfitabilityItem[] {
-    const ready = this.readyItems();
-    const raw = ready.map((item) => {
-      const units    = DEMO_SALES[item.id] ?? 0;
-      const revenue  = units * item.selling_price_idr;
-      const cost     = units * (item.est_cost_idr ?? 0);
-      const margin   = revenue ? ((revenue - cost) / revenue) * 100 : 0;
-      return {
-        menu_item:       item.name,
-        units_sold:      units,
-        revenue_idr:     revenue,
-        est_cost_idr:    cost,
-        contribution_idr: revenue - cost,
-        margin_pct:      margin,
-        classification:  'star' as ItemClassification
-      };
-    });
-
-    const medianMargin = this.median(raw.map((i) => i.margin_pct));
-    const medianUnits  = this.median(raw.map((i) => i.units_sold));
-    return raw.map((i) => ({ ...i, classification: this.classify(i.margin_pct, i.units_sold, medianMargin, medianUnits) }));
-  }
-
-  private classify(margin: number, units: number, medianMargin: number, medianUnits: number): ItemClassification {
-    if (margin >= medianMargin && units >= medianUnits) return 'star';
-    if (margin <  medianMargin && units >= medianUnits) return 'workhorse';
-    if (margin >= medianMargin && units <  medianUnits) return 'niche';
-    return 'deadweight';
-  }
-
-  private median(values: number[]): number {
-    if (!values.length) return 0;
-    const sorted = [...values].sort((a, b) => a - b);
-    const mid = Math.floor(sorted.length / 2);
-    return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-  }
 
   private loadMenuItems(): StoredMenuItem[] {
     try { return JSON.parse(localStorage.getItem(MENU_STORAGE_KEY) ?? 'null') ?? []; } catch { return []; }
