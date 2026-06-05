@@ -83,6 +83,9 @@
               <img src="ds/icons/plus.svg" alt="" width="14" height="14" /> Add item
             </button>
           </div>
+          @if (manualDuplicateWarning()) {
+            <p class="manual-warning">{{ manualDuplicateWarning() }}</p>
+          }
           <div class="manual-hint">Items appear in the table below. Click any row to edit ingredients after estimation.</div>
         </div>
       }
@@ -132,10 +135,36 @@
                   <div class="item-thumb" [ngClass]="'thumb-' + iconForName(item.name)">
                     <img [src]="'ds/icons/' + iconForName(item.name) + '.svg'" alt="" width="18" height="18" />
                   </div>
-                  <div class="cell-name-text">{{ item.name }}</div>
+                  @if (editingNameId() === item.id) {
+                    <input class="cell-input-inline"
+                           [value]="editNameValue()"
+                           (input)="editNameValue.set($any($event.target).value)"
+                           (blur)="saveEditName(item)"
+                           (keydown.enter)="saveEditName(item)"
+                           (keydown.escape)="cancelEditName()"
+                           (click)="$event.stopPropagation()"
+                           autofocus />
+                    @if (editNameError()) {
+                      <span class="cell-input-error">{{ editNameError() }}</span>
+                    }
+                  } @else {
+                    <div class="cell-name-text" (click)="startEditName($event, item)">{{ item.name }}</div>
+                  }
                 </div>
               </td>
-              <td class="num-col num">{{ fmtIDR(item.selling_price_idr) }}</td>
+              <td class="num-col num" (click)="$event.stopPropagation()">
+                @if (editingPriceId() === item.id) {
+                  <input class="cell-input-inline cell-input-inline-num" type="number"
+                         [value]="editPriceValue()"
+                         (input)="editPriceValue.set($any($event.target).valueAsNumber)"
+                         (blur)="saveEditPrice(item)"
+                         (keydown.enter)="saveEditPrice(item)"
+                         (keydown.escape)="cancelEditPrice()"
+                         (click)="$event.stopPropagation()" />
+                } @else {
+                  <span (click)="startEditPrice($event, item)">{{ fmtIDR(item.selling_price_idr) }}</span>
+                }
+              </td>
               <td class="num-col num">{{ item.status === 'ready' ? fmtIDR(item.est_cost_idr) : '—' }}</td>
               <td class="num-col num">{{ item.status === 'ready' ? fmtIDR(item.gross_margin_idr) : '—' }}</td>
               <td class="num-col num">

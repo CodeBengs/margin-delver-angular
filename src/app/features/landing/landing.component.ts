@@ -40,6 +40,12 @@ export class LandingComponent implements OnInit, OnDestroy {
   readonly dragOver = signal(false);
   readonly confirmDeleteItem = signal<DraftMenuItem | null>(null);
   readonly confirmDeleteIngredient = signal<{ item: DraftMenuItem; ingIdx: number } | null>(null);
+  readonly editingNameId = signal<number | null>(null);
+  readonly editingPriceId = signal<number | null>(null);
+  readonly editNameValue = signal<string>('');
+  readonly editPriceValue = signal<number | null>(null);
+  readonly editNameError = signal<string>('');
+  readonly manualDuplicateWarning = signal<string>('');
   readonly hasMenu = computed(() => this.menuItems().length > 0);
   readonly readyItems = computed(() => this.menuItems().filter((i) => i.status === 'ready'));
   readonly readyCount = computed(() => this.readyItems().length);
@@ -65,7 +71,7 @@ export class LandingComponent implements OnInit, OnDestroy {
     window.dispatchEvent(new CustomEvent('md:load-demo'));
   }
 
-  setManualName(v: string): void { this.manualName.set(v); }
+  setManualName(v: string): void { this.manualName.set(v); this.manualDuplicateWarning.set(''); }
   setManualPrice(v: string | number | null): void {
     const n = Number(v);
     this.manualPrice.set(Number.isFinite(n) && n > 0 ? n : null);
@@ -75,7 +81,10 @@ export class LandingComponent implements OnInit, OnDestroy {
     const name = this.manualName().trim();
     const price = Number(this.manualPrice());
     if (!name || !price) return;
-    if (this.menuItems().some((i) => i.name.toLowerCase() === name.toLowerCase())) return;
+    if (this.menuItems().some((i) => i.name.toLowerCase() === name.toLowerCase())) {
+      this.manualDuplicateWarning.set('This menu item already exists. Please use a unique name.');
+      return;
+    }
     const item: DraftMenuItem = {
       id: Date.now(), name, selling_price_idr: price,
       est_cost_idr: null, gross_margin_idr: null, gross_margin_pct: null,
@@ -85,6 +94,7 @@ export class LandingComponent implements OnInit, OnDestroy {
     this.selectedItemId.set(item.id);
     this.manualName.set('');
     this.manualPrice.set(null);
+    this.manualDuplicateWarning.set('');
     this.persist();
   }
 
@@ -215,6 +225,69 @@ export class LandingComponent implements OnInit, OnDestroy {
   }
 
   trackById(_: number, item: { id: number }): number { return item.id; }
+
+  startEditName(event: Event, item: DraftMenuItem): void {
+    event.stopPropagation();
+    this.editingNameId.set(item.id);
+    this.editNameValue.set(item.name);
+    this.editNameError.set('');
+  }
+
+  saveEditName(item: DraftMenuItem): void {
+    const newName = this.editNameValue().trim();
+    if (!newName) {
+      this.cancelEditName();
+      return;
+    }
+    const duplicate = this.menuItems().some(
+      (i) => i.id !== item.id && i.name.toLowerCase() === newName.toLowerCase()
+    );
+    if (duplicate) {
+      this.editNameError.set('This menu name is already taken.');
+      return;
+    }
+    this.updateItemNamePrice(item, newName, item.selling_price_idr);
+    this.editingNameId.set(null);
+    this.editNameValue.set('');
+    this.editNameError.set('');
+  }
+
+  cancelEditName(): void {
+    this.editingNameId.set(null);
+    this.editNameValue.set('');
+    this.editNameError.set('');
+  }
+
+  startEditPrice(event: Event, item: DraftMenuItem): void {
+    event.stopPropagation();
+    this.editingPriceId.set(item.id);
+    this.editPriceValue.set(item.selling_price_idr);
+  }
+
+  saveEditPrice(item: DraftMenuItem): void {
+    const newPrice = this.editPriceValue();
+    if (newPrice === null || newPrice <= 0) {
+      this.cancelEditPrice();
+      return;
+    }
+    this.updateItemNamePrice(item, item.name, newPrice);
+    this.editingPriceId.set(null);
+    this.editPriceValue.set(null);
+  }
+
+  cancelEditPrice(): void {
+    this.editingPriceId.set(null);
+    this.editPriceValue.set(null);
+  }
+
+  private updateItemNamePrice(item: DraftMenuItem, newName: string, newPrice: number): void {
+    this.menuItems.update(items => items.map(cur => {
+      if (cur.id !== item.id) return cur;
+      const updated = { ...cur, name: newName, selling_price_idr: newPrice };
+      return newPrice !== item.selling_price_idr ? this.recalculate(updated) : updated;
+    }));
+    this.persist();
+  }
 
   private updateItem(item: DraftMenuItem): void {
     const recalculated = this.recalculate(item);
