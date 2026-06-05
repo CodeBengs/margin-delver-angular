@@ -48,6 +48,15 @@
     </div>
   }
 
+  <!-- Menu-changed-after-sales warning -->
+  @if (menuChangedAfterSales()) {
+    <div class="notice notice-warning">
+      <img src="ds/icons/warning.svg" alt="" width="14" height="14" />
+      Your menu has changed. Please re-upload your sales data to refresh the analysis.
+      <a routerLink="/sales-upload" class="link">Go to Sales Analysis →</a>
+    </div>
+  }
+
   <!-- Input panel -->
   <div class="panel">
     <div class="panel-head">

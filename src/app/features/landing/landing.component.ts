@@ -58,6 +58,8 @@ export class LandingComponent implements OnInit, OnDestroy {
     return ready.length ? ready.reduce((s, i) => s + (i.gross_margin_pct ?? 0), 0) / ready.length : 0;
   });
 
+  readonly menuChangedAfterSales = signal(false);
+
   readonly retryAltName: WritableSignal<Record<number, string>> = signal({});
   readonly retryLoading: WritableSignal<Record<number, boolean>> = signal({});
   readonly retryError: WritableSignal<Record<number, string>> = signal({});
@@ -454,5 +456,8 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   private persist(): void {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(this.menuItems()));
+    if (localStorage.getItem('md_sales_uploaded_v1') === 'true') {
+      this.menuChangedAfterSales.set(true);
+    }
   }
 }

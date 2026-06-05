@@ -14,7 +14,7 @@ const CLAUDE_MODEL = 'md_claude_model_v1';
 export class SettingsComponent {
   readonly savedApiKey = signal(localStorage.getItem(CLAUDE_KEY) || '');
   readonly draftKey = signal(localStorage.getItem(CLAUDE_KEY) || '');
-  readonly model = signal(localStorage.getItem(CLAUDE_MODEL) || 'claude-sonnet-4-5');
+  readonly model = signal(localStorage.getItem(CLAUDE_MODEL) || 'claude-sonnet-4-6');
   readonly showKey = signal(false);
   readonly savedFlash = signal(false);
 
