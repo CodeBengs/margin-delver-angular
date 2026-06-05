@@ -32,21 +32,23 @@ export class IngredientPriceService {
     );
   }
 
-  lookup(name: string, unit: string): number | null {
+  lookup(name: string, unit?: string): number | null {
     const normalizedName = name.trim().toLowerCase();
-    const normalizedUnit = unit.trim().toLowerCase();
+    const normalizedUnit = unit ? unit.trim().toLowerCase() : null;
     const entries = this.prices();
 
-    for (const entry of entries) {
-      const entryUnit = entry.unit.trim().toLowerCase();
-      if (entryUnit !== normalizedUnit) continue;
+    if (normalizedUnit !== null) {
+      for (const entry of entries) {
+        const entryUnit = entry.unit.trim().toLowerCase();
+        if (entryUnit !== normalizedUnit) continue;
 
-      if (entry.name.trim().toLowerCase() === normalizedName) {
-        return entry.price_idr;
-      }
-      for (const alias of entry.aliases) {
-        if (alias.trim().toLowerCase() === normalizedName) {
+        if (entry.name.trim().toLowerCase() === normalizedName) {
           return entry.price_idr;
+        }
+        for (const alias of entry.aliases) {
+          if (alias.trim().toLowerCase() === normalizedName) {
+            return entry.price_idr;
+          }
         }
       }
     }

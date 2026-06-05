@@ -12,6 +12,10 @@ export class ExportService {
     this.excelExport.exportMarginReport(items);
   }
 
+  downloadSalesTemplate(menuItemNames: string[]): void {
+    this.excelExport.exportSalesTemplate(menuItemNames);
+  }
+
   downloadFullReport(items: MenuItem[], analysis: ProfitabilityAnalysisResult): void {
     this.excelExport.exportFullReport(items, analysis);
   }
