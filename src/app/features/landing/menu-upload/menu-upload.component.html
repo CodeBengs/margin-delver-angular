@@ -1,10 +1,94 @@
-<app-file-drop-zone
-  title="Upload menu Excel"
-  description="Accepts .xlsx or .xls with Menu Name and Selling Price columns."
-  (fileSelected)="upload($event)"
-/>
-
-@if (message()) {
-  <p>{{ message() }}</p>
+@if (state() === 'idle') {
+  <app-file-drop-zone
+    title="Drop your menu Excel file here"
+    description=".xlsx or .xls · max 5MB · column 1 = Menu Name, column 2 = Selling Price (IDR)"
+    [maxSizeMb]="5"
+    (fileSelected)="onFileSelected($event)"
+    (fileSizeError)="onFileSizeError($event)"
+  />
+  @if (sizeError()) {
+    <p class="upload-error">{{ sizeError() }}</p>
+  }
+  @if (isLoading()) {
+    <p class="upload-loading">Parsing file…</p>
+  }
 }
 
+@if (state() === 'idr-confirm') {
+  <div class="upload-notice-panel">
+    <div class="upload-notice-title">IDR-formatted prices detected</div>
+    <p class="upload-notice-body">
+      We found prices formatted as IDR strings (e.g. "Rp 25.000"). We've converted them to numbers.
+      Please review before importing.
+    </p>
+    @if (idrRows().length > 0) {
+      <table class="upload-preview-table">
+        <thead>
+          <tr>
+            <th>Row #</th>
+            <th>Menu Name</th>
+            <th>Original Price</th>
+            <th>Converted Price (IDR)</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of idrRows(); track row.rowIndex) {
+            <tr>
+              <td>{{ row.rowIndex }}</td>
+              <td>{{ row.name }}</td>
+              <td>{{ row.priceRaw }}</td>
+              <td>{{ row.price !== null ? (row.price | number) : '—' }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    }
+    <div class="upload-actions">
+      <button type="button" class="btn btn-primary" (click)="onConfirm()">Confirm import</button>
+      <button type="button" class="btn btn-ghost" (click)="onReset()">Cancel</button>
+    </div>
+  </div>
+}
+
+@if (state() === 'preview') {
+  @if (parsedResult()!.headerDetected) {
+    <p class="upload-notice">Header row detected and skipped.</p>
+  }
+  @if (parsedResult()!.totalRows > 100) {
+    <div class="upload-warning">
+      Large menu detected ({{ parsedResult()!.totalRows }} items). Processing may take up to 30 seconds.
+    </div>
+  }
+
+  <table class="upload-preview-table">
+    <thead>
+      <tr>
+        <th>Row #</th>
+        <th>Menu Name</th>
+        <th>Selling Price (IDR)</th>
+        <th>Issues</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of parsedResult()!.rows; track row.rowIndex) {
+        <tr [class.row-error]="row.errors.length > 0" [class.row-warning]="row.isDuplicate && row.errors.length === 0">
+          <td>{{ row.rowIndex }}</td>
+          <td>{{ row.name }}</td>
+          <td>{{ row.price !== null ? (row.price | number) : row.priceRaw }}</td>
+          <td>{{ rowIssues(row) }}</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+
+  @if (blockingRows().length > 0) {
+    <p class="upload-error">{{ blockingRows().length }} row(s) have errors. Please correct and re-upload.</p>
+  }
+
+  <div class="upload-actions">
+    <button type="button" class="btn btn-primary" [disabled]="!canConfirm()" (click)="onConfirm()">
+      Import {{ parsedResult()!.rows.length - blockingRows().length }} items
+    </button>
+    <button type="button" class="btn btn-ghost" (click)="onReset()">Cancel</button>
+  </div>
+}

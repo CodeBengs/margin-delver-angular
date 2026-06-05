@@ -78,7 +78,7 @@ export class ExcelParserService {
             const row = dataRows[i] as unknown[];
             const nameRaw = String(row[0] ?? '').trim();
             const priceRaw = String(row[1] ?? '').trim();
-            const errors: string[] = [];
+            const errors: ('empty_name' | 'empty_price' | 'invalid_price')[] = [];
 
             if (!nameRaw) errors.push('empty_name');
 

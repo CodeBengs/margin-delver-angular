@@ -19,4 +19,8 @@ export class ExportService {
   downloadFullReport(items: MenuItem[], analysis: ProfitabilityAnalysisResult): void {
     this.excelExport.exportFullReport(items, analysis);
   }
+
+  downloadMenuTemplate(): void {
+    this.excelExport.exportMenuTemplate();
+  }
 }

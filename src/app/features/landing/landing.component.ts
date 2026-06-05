@@ -6,6 +6,9 @@ import { RouterLink } from '@angular/router';
 import { DEMO_MENU } from '../../core/demo-data';
 import { Ingredient } from '../../core/models/ingredient.model';
 import { MenuItem } from '../../core/models/menu-item.model';
+import { ParsedMenuResult } from '../../core/services/excel-parser.service';
+import { ExportService } from '../../core/services/export.service';
+import { MenuUploadComponent } from './menu-upload/menu-upload.component';
 
 type MenuTab = 'upload' | 'manual';
 type DraftIngredient = Ingredient & { id: number };
@@ -16,7 +19,7 @@ const STORAGE_KEY = 'md_angular_menu_v1';
 @Component({
   selector: 'app-landing',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink],
+  imports: [CommonModule, FormsModule, RouterLink, MenuUploadComponent],
   templateUrl: './landing.component.html',
   styleUrl: './landing.component.scss'
 })
@@ -37,17 +40,20 @@ export class LandingComponent implements OnInit, OnDestroy {
   readonly dragOver = signal(false);
   readonly confirmDeleteItem = signal<DraftMenuItem | null>(null);
   readonly confirmDeleteIngredient = signal<{ item: DraftMenuItem; ingIdx: number } | null>(null);
+  readonly uploadNotice = signal('');
 
   readonly hasMenu = computed(() => this.menuItems().length > 0);
   readonly readyItems = computed(() => this.menuItems().filter((i) => i.status === 'ready'));
   readonly readyCount = computed(() => this.readyItems().length);
-  readonly hasPendingItems = computed(() => this.menuItems().some((i) => ['draft', 'pending', 'incomplete'].includes(i.status)));
+  readonly hasPendingItems = computed(() => this.menuItems().some((i) => ['draft', 'incomplete'].includes(i.status)));
   readonly totalRevenuePotential = computed(() => this.menuItems().reduce((s, i) => s + i.selling_price_idr, 0));
   readonly totalCost = computed(() => this.menuItems().reduce((s, i) => s + (i.est_cost_idr ?? 0), 0));
   readonly averageMargin = computed(() => {
     const ready = this.readyItems();
     return ready.length ? ready.reduce((s, i) => s + (i.gross_margin_pct ?? 0), 0) / ready.length : 0;
   });
+
+  constructor(private readonly exportService: ExportService) {}
 
   ngOnInit(): void { window.addEventListener('md:load-demo', this.demoListener); }
   ngOnDestroy(): void { window.removeEventListener('md:load-demo', this.demoListener); }
@@ -84,13 +90,49 @@ export class LandingComponent implements OnInit, OnDestroy {
     this.persist();
   }
 
-  simulateUpload(): void { this.loadDemo(); }
+  onItemsUploaded(result: ParsedMenuResult): void {
+    const existing = this.menuItems();
+    const newItems: DraftMenuItem[] = [];
+    let idx = 0;
+    for (const row of result.rows) {
+      if (row.errors.length > 0) continue;
+      const isDuplicate = existing.some(
+        (i) => i.name.toLowerCase() === row.name.toLowerCase()
+      ) || newItems.some(
+        (i) => i.name.toLowerCase() === row.name.toLowerCase()
+      );
+      if (isDuplicate) continue;
+      const item: DraftMenuItem = {
+        id: Date.now() + idx,
+        name: row.name,
+        selling_price_idr: row.price!,
+        est_cost_idr: null,
+        gross_margin_idr: null,
+        gross_margin_pct: null,
+        status: 'draft',
+        ingredients: []
+      };
+      newItems.push(item);
+      idx++;
+    }
+    if (result.headerDetected) {
+      this.uploadNotice.set('Header row detected and skipped.');
+    } else {
+      this.uploadNotice.set('');
+    }
+    this.menuItems.update((items) => [...items, ...newItems]);
+    this.persist();
+  }
+
+  downloadMenuTemplate(): void {
+    this.exportService.downloadMenuTemplate();
+  }
 
   estimateMargins(): void {
     if (!this.hasPendingItems()) return;
     this.processing.set(true);
     this.menuItems.update((items) =>
-      items.map((i) => ['draft', 'pending', 'incomplete'].includes(i.status) ? { ...i, status: 'estimating' } : i)
+      items.map((i) => ['draft', 'incomplete'].includes(i.status) ? { ...i, status: 'estimating' } : i)
     );
     window.setTimeout(() => {
       this.menuItems.update((items) =>

@@ -116,6 +116,19 @@ export class ExcelExportService {
     this.triggerDownload(buf, 'full-report.xlsx');
   }
 
+  exportMenuTemplate(): void {
+    const data: string[][] = [
+      ['Menu Name', 'Selling Price (IDR)'],
+      ...Array.from({ length: 10 }, () => ['', ''])
+    ];
+
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Menu Template');
+    const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
+    this.triggerDownload(buf, 'menu-template.xlsx');
+  }
+
   private triggerDownload(buffer: ArrayBuffer, filename: string): void {
     const blob = new Blob([buffer], {
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'

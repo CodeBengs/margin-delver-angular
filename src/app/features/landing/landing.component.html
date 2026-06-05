@@ -57,30 +57,16 @@
         </button>
       </div>
       <div class="panel-head-right">
-        <a class="link"><img src="ds/icons/download.svg" alt="" width="14" height="14" /> Download template</a>
+        <a class="link" (click)="downloadMenuTemplate()"><img src="ds/icons/download.svg" alt="" width="14" height="14" /> Download template</a>
       </div>
     </div>
 
     <div class="panel-body">
       @if (activeTab() === 'upload') {
-        <div class="drop" [class.drop-over]="dragOver()"
-             (click)="simulateUpload()"
-             (dragover)="$event.preventDefault(); dragOver.set(true)"
-             (dragleave)="dragOver.set(false)"
-             (drop)="$event.preventDefault(); dragOver.set(false); simulateUpload()">
-          <div class="drop-glyph">
-            <img src="ds/icons/upload.svg" alt="" width="28" height="28" />
-          </div>
-          <div class="drop-title">Drop your menu Excel file here</div>
-          <div class="drop-sub">.xlsx or .xls · max 5MB · column 1 = Menu Name, column 2 = Selling Price (IDR)</div>
-          <div class="drop-cta">
-            <button type="button" class="btn btn-secondary" (click)="$event.stopPropagation()">
-              <img src="ds/icons/upload.svg" alt="" width="14" height="14" /> Browse files
-            </button>
-            <span class="drop-or">or</span>
-            <a class="link" (click)="$event.stopPropagation(); loadDemo()">Load demo warung data</a>
-          </div>
-        </div>
+        @if (uploadNotice()) {
+          <p class="upload-notice">{{ uploadNotice() }}</p>
+        }
+        <app-menu-upload (itemsUploaded)="onItemsUploaded($event)" />
       } @else {
         <div class="manual-form">
           <div class="manual-row">
