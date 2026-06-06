@@ -77,18 +77,20 @@
               <div class="drop-sub">Claude is reviewing {{ periodDays() }} days of data against {{ readyItems().length }} menu items.</div>
             </div>
           } @else {
-            <!-- File drop zone -->
+            <!-- File drop zone (rich empty-state design) -->
             <app-file-drop-zone
+              iconSrc="ds/icons/data.svg"
               title="Drop your sales Excel file here"
               description=".xlsx or .xls · 1–31 day rows · column 1 = Date, remaining columns = menu item names"
               [maxSizeMb]="5"
               (fileSelected)="onSalesFileSelected($event)"
-              (fileSizeError)="uploadError.set($event)"
-            />
+              (fileSizeError)="uploadError.set($event)">
+              <span drop-extra class="drop-or">or</span>
+              <a drop-extra class="link" (click)="$event.stopPropagation(); loadDemoSales()">Load demo 30-day sales</a>
+            </app-file-drop-zone>
             @if (uploadError()) {
               <p class="upload-error">{{ uploadError() }}</p>
             }
-            <a class="link" style="font-size:12px" (click)="loadDemoSales()">Load demo 30-day sales</a>
           }
 
           <!-- Preview section (shown below drop zone when in preview state) -->

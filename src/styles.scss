@@ -408,6 +408,28 @@ p {
   border: 0;
 }
 
+/* ===== Promoted globals for projected / cross-component content ===== */
+.btn-secondary {
+  background: #fff;
+  color: var(--brand-primary, #eb7300);
+  border-color: var(--color-orange-200, #ffc680);
+}
+.btn-secondary img { filter: invert(43%) sepia(89%) saturate(1985%) hue-rotate(15deg) brightness(95%) contrast(101%); }
+.btn-secondary:hover { background: var(--color-orange-50, #fff4e5); }
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-orange-700, #8e4600);
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+}
+.link:hover { color: var(--color-orange-600, #c05f00); }
+
+.drop-or { font-size: 13px; color: var(--fg-muted, #666); }
+
 
 
 

@@ -75,11 +75,13 @@
 
     <div class="panel-body">
       @if (activeTab() === 'upload') {
-        <app-menu-upload (itemsUploaded)="onItemsUploaded($event)" />
-        <div class="demo-trigger-row">
-          <span class="drop-or">or</span>
-          <a class="link" (click)="loadDemo()">Load demo warung data</a>
-        </div>
+        <app-menu-upload
+          (itemsUploaded)="onItemsUploaded($event)"
+          (demoRequested)="loadDemo()"
+          [remainingSlots]="remainingSlots()" />
+        @if (capError()) {
+          <p class="manual-warning">{{ capError() }}</p>
+        }
       } @else {
         <div class="manual-form">
           <div class="manual-row">
@@ -94,13 +96,16 @@
                      placeholder="25000" (keydown.enter)="addManualItem()" />
             </div>
             <button type="button" class="btn btn-primary"
-                    [disabled]="!manualName().trim() || !manualPrice()"
+                    [disabled]="!manualName().trim() || !manualPrice() || atCapacity()"
                     (click)="addManualItem()">
               <img src="ds/icons/plus.svg" alt="" width="14" height="14" /> Add item
             </button>
           </div>
           @if (manualDuplicateWarning()) {
             <p class="manual-warning">{{ manualDuplicateWarning() }}</p>
+          }
+          @if (atCapacity()) {
+            <p class="manual-warning">Maximum {{ maxItems }} items reached.</p>
           }
           <div class="manual-hint">Items appear in the table below. Click any row to edit ingredients after estimation.</div>
         </div>

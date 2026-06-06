@@ -1,4 +1,4 @@
-import { Component, computed, EventEmitter, Output, signal } from '@angular/core';
+import { Component, computed, EventEmitter, Input, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 import { ExcelParserService, ParsedMenuResult, ParsedMenuRow } from '../../../core/services/excel-parser.service';
@@ -13,6 +13,8 @@ import { FileDropZoneComponent } from '../../../shared/components/file-drop-zone
 })
 export class MenuUploadComponent {
   @Output() itemsUploaded = new EventEmitter<ParsedMenuResult>();
+  @Output() demoRequested = new EventEmitter<void>();
+  @Input() remainingSlots = 20;
 
   readonly state = signal<'idle' | 'preview' | 'idr-confirm'>('idle');
   readonly parsedResult = signal<ParsedMenuResult | null>(null);
@@ -31,9 +33,21 @@ export class MenuUploadComponent {
     return result.rows.filter((r) => r.errors.length > 0);
   });
 
+  readonly validRowCount = computed<number>(() => {
+    const result = this.parsedResult();
+    if (!result) return 0;
+    return result.rows.filter((r) => r.errors.length === 0).length;
+  });
+
+  readonly exceedsCap = computed<boolean>(() => {
+    const result = this.parsedResult();
+    if (!result) return false;
+    return this.validRowCount() > this.remainingSlots;
+  });
+
   readonly canConfirm = computed<boolean>(() => {
     const s = this.state();
-    return (s === 'preview' || s === 'idr-confirm') && this.blockingRows().length === 0;
+    return (s === 'preview' || s === 'idr-confirm') && this.blockingRows().length === 0 && !this.exceedsCap();
   });
 
   constructor(

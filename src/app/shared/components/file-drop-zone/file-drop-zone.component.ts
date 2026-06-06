@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
+import { Component, ElementRef, EventEmitter, Input, Output, signal, ViewChild } from '@angular/core';
 
 @Component({
   selector: 'app-file-drop-zone',
@@ -7,6 +7,7 @@ import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
   styleUrl: './file-drop-zone.component.scss'
 })
 export class FileDropZoneComponent {
+  @Input() iconSrc = 'ds/icons/upload.svg';
   @Input() title = 'Upload file';
   @Input() description = 'Drag and drop file here, or click to browse.';
   @Input() accept = '.xlsx,.xls';
@@ -14,8 +15,14 @@ export class FileDropZoneComponent {
   @Output() fileSelected = new EventEmitter<File>();
   @Output() fileSizeError = new EventEmitter<string>();
 
+  @ViewChild('fileInput') fileInput!: ElementRef<HTMLInputElement>;
+
   isDragging = false;
   readonly sizeError = signal('');
+
+  openPicker(): void {
+    this.fileInput.nativeElement.click();
+  }
 
   onDragOver(event: DragEvent): void {
     event.preventDefault();

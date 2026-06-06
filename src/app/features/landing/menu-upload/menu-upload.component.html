@@ -1,11 +1,14 @@
 @if (state() === 'idle') {
   <app-file-drop-zone
+    iconSrc="ds/icons/upload.svg"
     title="Drop your menu Excel file here"
     description=".xlsx or .xls · max 5MB · column 1 = Menu Name, column 2 = Selling Price (IDR)"
     [maxSizeMb]="5"
     (fileSelected)="onFileSelected($event)"
-    (fileSizeError)="onFileSizeError($event)"
-  />
+    (fileSizeError)="onFileSizeError($event)">
+    <span drop-extra class="drop-or">or</span>
+    <a drop-extra class="link" (click)="$event.stopPropagation(); demoRequested.emit()">Load demo warung data</a>
+  </app-file-drop-zone>
   @if (sizeError()) {
     <p class="upload-error">{{ sizeError() }}</p>
   }
@@ -42,6 +45,9 @@
           }
         </tbody>
       </table>
+    }
+    @if (exceedsCap()) {
+      <p class="upload-error">Maximum 20 menu items. You can add up to {{ remainingSlots }} more, but this file has {{ validRowCount() }} valid item(s). Remove rows or existing items.</p>
     }
     <div class="upload-actions">
       <button type="button" class="btn btn-primary" [disabled]="!canConfirm()" (click)="onConfirm()">Confirm import</button>
@@ -84,6 +90,9 @@
 
     @if (blockingRows().length > 0) {
       <p class="upload-error">{{ blockingRows().length }} row(s) have errors. Please correct and re-upload.</p>
+    }
+    @if (exceedsCap()) {
+      <p class="upload-error">Maximum 20 menu items. You can add up to {{ remainingSlots }} more, but this file has {{ validRowCount() }} valid item(s). Remove rows or existing items.</p>
     }
 
     <div class="upload-actions">

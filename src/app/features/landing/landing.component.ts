@@ -16,6 +16,7 @@ type DraftIngredient = Ingredient & { id: number };
 type DraftMenuItem = Omit<MenuItem, 'id' | 'ingredients'> & { id: number; ingredients: DraftIngredient[] };
 
 const STORAGE_KEY = 'md_angular_menu_v1';
+const MAX_MENU_ITEMS = 20;
 
 @Component({
   selector: 'app-landing',
@@ -47,6 +48,10 @@ export class LandingComponent implements OnInit, OnDestroy {
   readonly editPriceValue = signal<number | null>(null);
   readonly editNameError = signal<string>('');
   readonly manualDuplicateWarning = signal<string>('');
+  readonly capError = signal('');
+  readonly maxItems = MAX_MENU_ITEMS;
+  readonly remainingSlots = computed(() => Math.max(0, MAX_MENU_ITEMS - this.menuItems().length));
+  readonly atCapacity = computed(() => this.menuItems().length >= MAX_MENU_ITEMS);
   readonly hasMenu = computed(() => this.menuItems().length > 0);
   readonly readyItems = computed(() => this.menuItems().filter((i) => i.status === 'ready'));
   readonly readyCount = computed(() => this.readyItems().length);
@@ -90,6 +95,10 @@ export class LandingComponent implements OnInit, OnDestroy {
   }
 
   addManualItem(): void {
+    if (this.menuItems().length >= MAX_MENU_ITEMS) {
+      this.manualDuplicateWarning.set('You have reached the maximum of ' + MAX_MENU_ITEMS + ' menu items. Remove an item to add more.');
+      return;
+    }
     const name = this.manualName().trim();
     const price = Number(this.manualPrice());
     if (!name || !price) return;
@@ -135,6 +144,13 @@ export class LandingComponent implements OnInit, OnDestroy {
       newItems.push(item);
       idx++;
     }
+    const existingCount = existing.length;
+    const validNewCount = newItems.length;
+    if (existingCount + validNewCount > MAX_MENU_ITEMS) {
+      this.capError.set('Maximum ' + MAX_MENU_ITEMS + ' menu items. You have ' + existingCount + '; this file would add ' + validNewCount + '. Remove rows or existing items, then re-upload.');
+      return;
+    }
+    this.capError.set('');
     this.menuItems.update((items) => [...items, ...newItems]);
     this.persist();
   }
