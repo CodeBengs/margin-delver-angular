@@ -2,9 +2,9 @@ import { CommonModule } from '@angular/common';
 import { Component, computed, OnDestroy, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
-import { DEMO_SALES } from '../../core/demo-data';
+import { DEMO_SALES, DEMO_SUGGESTIONS } from '../../core/demo-data';
 import { MenuItem } from '../../core/models/menu-item.model';
-import { AiSuggestion, ItemClassification, ProfitabilityAnalysisResult } from '../../core/models/profitability.model';
+import { AiSuggestion, ItemClassification, ProfitabilityAnalysisResult, ProfitabilityItem } from '../../core/models/profitability.model';
 import { ExcelParserService, ParsedSalesResult, ParsedSalesRow } from '../../core/services/excel-parser.service';
 import { ExportService } from '../../core/services/export.service';
 import { SalesService } from '../../core/services/sales.service';
@@ -280,54 +280,76 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
 
   loadDemoSales(): void {
     if (this.isLocked() || this.uploadState() === 'analyzing') return;
-    this.uploadState.set('analyzing');
-    this.message.set('');
-
-    // Build fake parsed rows from DEMO_SALES
-    const menu = this.readyItems();
-    const quantities: Record<string, number> = {};
-    for (const item of menu) {
-      const dailyAvg = Math.round((DEMO_SALES[item.id] ?? 0) / 30);
-      quantities[item.name] = dailyAvg;
-    }
-
-    // Create 30 synthetic rows
-    const rows: ParsedSalesRow[] = Array.from({ length: 30 }, (_, i) => ({
-      rowIndex: i + 1,
-      date: `${String(i + 1).padStart(2, '0')}/05/2026`,
-      dateValid: true,
-      quantities: { ...quantities },
-      cellErrors: []
-    }));
-
-    const matchedNames = menu.map(m => m.name);
-    const columns = matchedNames.map(name => ({ header: name, matched: true, matchedName: name, columnIndex: 0 }));
-
-    const fakeParsed: ParsedSalesResult = {
-      columns,
-      rows,
-      matchedCount: matchedNames.length,
-      unmatchedCount: 0,
-      blockingErrors: [],
-      warnings: []
-    };
-
-    this.parsedSales.set(fakeParsed);
-    this.periodDays.set(30);
-
-    const menuItemsForAnalysis = this.readyItems() as unknown as MenuItem[];
-    this.salesService.analyseSalesData(menuItemsForAnalysis, rows, 30).subscribe({
-      next: (result) => {
-        this.analysisResult.set(result);
-        this.uploadState.set('results');
-        this.expandedSugId.set(0);
-        this.dismissedIds.set([]);
+    const items = this.buildDemoItems();
+    const totalRevenue = items.reduce((s, i) => s + i.revenue_idr, 0);
+    const totalCost = items.reduce((s, i) => s + i.est_cost_idr, 0);
+    const gross = totalRevenue - totalCost;
+    const margin = totalRevenue ? (gross / totalRevenue) * 100 : 0;
+    this.analysisResult.set({
+      summary: {
+        total_revenue_idr: totalRevenue,
+        total_cost_idr: totalCost,
+        total_gross_profit_idr: gross,
+        overall_margin_pct: margin,
+        verdict: margin > 2 ? 'profitable' : margin < -2 ? 'loss' : 'break_even',
+        verdict_summary: 'Menu Anda menghasilkan gross margin sehat untuk periode sample ini.'
       },
-      error: (err) => {
-        this.message.set(err instanceof Error ? err.message : 'Analysis failed. Please try again.');
-        this.uploadState.set('idle');
-      }
+      items,
+      suggestions: this.buildDemoSuggestions()
     });
+    this.periodDays.set(30);
+    this.uploadState.set('results');
+    this.expandedSugId.set(0);
+    this.dismissedIds.set([]);
+    localStorage.setItem('md_sales_uploaded_v1', 'true');
+  }
+
+  private buildDemoItems(): ProfitabilityItem[] {
+    const ready = this.readyItems();
+    const raw = ready.map((item) => {
+      const units = DEMO_SALES[item.id] ?? 0;
+      const revenue = units * item.selling_price_idr;
+      const cost = units * (item.est_cost_idr ?? 0);
+      const margin = revenue ? ((revenue - cost) / revenue) * 100 : 0;
+      return {
+        menu_item: item.name,
+        units_sold: units,
+        revenue_idr: revenue,
+        est_cost_idr: cost,
+        contribution_idr: revenue - cost,
+        margin_pct: margin,
+        classification: 'star' as ItemClassification
+      };
+    });
+    const medianMargin = this.median(raw.map((i) => i.margin_pct));
+    const medianUnits = this.median(raw.map((i) => i.units_sold));
+    return raw.map((i) => ({ ...i, classification: this.classify(i.margin_pct, i.units_sold, medianMargin, medianUnits) }));
+  }
+
+  private classify(margin: number, units: number, medianMargin: number, medianUnits: number): ItemClassification {
+    if (margin >= medianMargin && units >= medianUnits) return 'star';
+    if (margin < medianMargin && units >= medianUnits) return 'workhorse';
+    if (margin >= medianMargin && units < medianUnits) return 'niche';
+    return 'deadweight';
+  }
+
+  private median(values: number[]): number {
+    if (!values.length) return 0;
+    const sorted = [...values].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+
+  private buildDemoSuggestions(): AiSuggestion[] {
+    return DEMO_SUGGESTIONS.map((s, i) => ({
+      id: i + 1,
+      suggestion_type: s.suggestion_type as AiSuggestion['suggestion_type'],
+      title: s.title,
+      description: s.description,
+      items_involved: s.items_involved,
+      estimated_impact: s.estimated_impact,
+      review_status: 'new' as const
+    }));
   }
 
   downloadTemplate(): void {

@@ -76,6 +76,10 @@
     <div class="panel-body">
       @if (activeTab() === 'upload') {
         <app-menu-upload (itemsUploaded)="onItemsUploaded($event)" />
+        <div class="demo-trigger-row">
+          <span class="drop-or">or</span>
+          <a class="link" (click)="loadDemo()">Load demo warung data</a>
+        </div>
       } @else {
         <div class="manual-form">
           <div class="manual-row">
