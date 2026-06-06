@@ -8,7 +8,8 @@ import { FileDropZoneComponent } from '../../../shared/components/file-drop-zone
   selector: 'app-menu-upload',
   standalone: true,
   imports: [CommonModule, FileDropZoneComponent],
-  templateUrl: './menu-upload.component.html'
+  templateUrl: './menu-upload.component.html',
+  styleUrl: './menu-upload.component.scss'
 })
 export class MenuUploadComponent {
   @Output() itemsUploaded = new EventEmitter<ParsedMenuResult>();

@@ -1,0 +1,101 @@
+/* ===== UPLOAD MESSAGES ===== */
+.upload-error {
+  color: var(--color-danger-700, #b30000);
+  font-size: var(--fs-size-12, 12px);
+  margin-top: var(--space-3, 8px);
+}
+.upload-loading {
+  color: var(--fg-muted, #666);
+  font-size: var(--fs-size-12, 12px);
+  margin-top: var(--space-3, 8px);
+}
+
+/* ===== UPLOAD NOTICE (info) ===== */
+.upload-notice {
+  padding: var(--space-4, 12px) var(--space-5, 16px);
+  border-radius: var(--radius-md, 8px);
+  background: var(--color-blue-50, #eaf5ff);
+  border: 1px solid var(--color-blue-50, #eaf5ff);
+  color: var(--color-blue-600, #0f6cb6);
+  font-size: var(--fs-size-12, 12px);
+  margin-top: var(--space-5, 16px);
+}
+
+/* ===== UPLOAD WARNING (amber) ===== */
+.upload-warning {
+  padding: var(--space-4, 12px) var(--space-5, 16px);
+  border-radius: var(--radius-md, 8px);
+  background: var(--color-warning-50, #fff8e5);
+  border: 1px solid var(--color-warning-50, #fff8e5);
+  color: var(--color-warning-700, #8a5f08);
+  font-size: var(--fs-size-12, 12px);
+  margin-top: var(--space-5, 16px);
+}
+
+/* ===== IDR CONFIRMATION PANEL ===== */
+.upload-notice-panel {
+  background: var(--bg-surface, #fff);
+  border: 1px solid var(--border-subtle, #ececec);
+  border-radius: var(--radius-lg, 12px);
+  padding: var(--space-7, 24px);
+  margin-top: var(--space-5, 16px);
+  box-shadow: var(--elevation-1, 0 1px 4px rgba(0,0,0,.08));
+}
+.upload-notice-title {
+  font: var(--fw-semibold, 600) var(--fs-size-16, 16px)/1.3 var(--font-sans, Inter, sans-serif);
+  color: var(--fg-strong, #222);
+}
+.upload-notice-body {
+  font-size: var(--fs-size-14, 14px);
+  color: var(--fg-muted, #666);
+  line-height: 1.55;
+  margin-top: var(--space-3, 8px);
+  max-width: 640px;
+}
+
+/* ===== PREVIEW TABLE ===== */
+.upload-preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--border-subtle, #eee);
+  border-radius: var(--radius-md, 8px);
+  overflow: hidden;
+  font-size: 12.5px;
+  margin-top: var(--space-5, 16px);
+}
+.upload-preview-table th {
+  text-align: left;
+  font: var(--fw-semibold, 600) var(--fs-size-12, 12px)/1 var(--font-sans, Inter, sans-serif);
+  color: var(--fg-muted, #666);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: var(--space-4, 12px) var(--space-5, 16px);
+  background: var(--color-grey-50, #fafafa);
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border-default, #e0e0df);
+}
+.upload-preview-table td {
+  padding: var(--space-3, 8px) var(--space-5, 16px);
+  color: var(--fg-default, #333);
+  border-bottom: 1px solid var(--border-subtle, #eee);
+  vertical-align: middle;
+}
+.upload-preview-table tr:last-child td { border-bottom: none; }
+
+/* ===== ROW STATES ===== */
+.row-error td {
+  background: var(--color-danger-50, #ffeceb);
+  box-shadow: inset 3px 0 0 var(--color-danger-500, #e53935);
+}
+.row-warning td {
+  background: var(--color-warning-50, #fff8e5);
+  box-shadow: inset 3px 0 0 var(--color-warning-500, #f5a623);
+}
+
+/* ===== ACTIONS ===== */
+.upload-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3, 8px);
+  margin-top: var(--space-5, 16px);
+}
