@@ -596,15 +596,6 @@
   margin-top: var(--space-2, 4px);
 }
 
-/* ===== DEMO TRIGGER ROW ===== */
-.demo-trigger-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3, 8px);
-  margin-top: var(--space-4, 12px);
-}
-
 /* ===== RESPONSIVE ===== */
 @media (max-width: 960px) {
   .page-head { flex-direction: column; align-items: flex-start; }

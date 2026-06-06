@@ -15,6 +15,7 @@ export class MenuUploadComponent {
   @Output() itemsUploaded = new EventEmitter<ParsedMenuResult>();
   @Output() demoRequested = new EventEmitter<void>();
   @Input() remainingSlots = 20;
+  @Input() existingNames: string[] = [];
 
   readonly state = signal<'idle' | 'preview' | 'idr-confirm'>('idle');
   readonly parsedResult = signal<ParsedMenuResult | null>(null);
@@ -33,17 +34,22 @@ export class MenuUploadComponent {
     return result.rows.filter((r) => r.errors.length > 0);
   });
 
-  readonly validRowCount = computed<number>(() => {
-    const result = this.parsedResult();
-    if (!result) return 0;
-    return result.rows.filter((r) => r.errors.length === 0).length;
+  readonly netNewCount = computed(() => {
+    const r = this.parsedResult();
+    if (!r) return 0;
+    const seen = new Set(this.existingNames.map((n) => n.toLowerCase()));
+    let count = 0;
+    for (const row of r.rows) {
+      if (row.errors.length > 0) continue;
+      const key = row.name.trim().toLowerCase();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      count++;
+    }
+    return count;
   });
 
-  readonly exceedsCap = computed<boolean>(() => {
-    const result = this.parsedResult();
-    if (!result) return false;
-    return this.validRowCount() > this.remainingSlots;
-  });
+  readonly exceedsCap = computed(() => this.netNewCount() > this.remainingSlots);
 
   readonly canConfirm = computed<boolean>(() => {
     const s = this.state();

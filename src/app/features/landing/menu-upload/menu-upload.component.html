@@ -47,7 +47,7 @@
       </table>
     }
     @if (exceedsCap()) {
-      <p class="upload-error">Maximum 20 menu items. You can add up to {{ remainingSlots }} more, but this file has {{ validRowCount() }} valid item(s). Remove rows or existing items.</p>
+      <p class="upload-error">Maximum 20 menu items. You can add up to {{ remainingSlots }} more, but this file adds {{ netNewCount() }} new item(s). Remove rows or existing items.</p>
     }
     <div class="upload-actions">
       <button type="button" class="btn btn-primary" [disabled]="!canConfirm()" (click)="onConfirm()">Confirm import</button>
@@ -92,7 +92,7 @@
       <p class="upload-error">{{ blockingRows().length }} row(s) have errors. Please correct and re-upload.</p>
     }
     @if (exceedsCap()) {
-      <p class="upload-error">Maximum 20 menu items. You can add up to {{ remainingSlots }} more, but this file has {{ validRowCount() }} valid item(s). Remove rows or existing items.</p>
+      <p class="upload-error">Maximum 20 menu items. You can add up to {{ remainingSlots }} more, but this file adds {{ netNewCount() }} new item(s). Remove rows or existing items.</p>
     }
 
     <div class="upload-actions">

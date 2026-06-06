@@ -78,7 +78,8 @@
         <app-menu-upload
           (itemsUploaded)="onItemsUploaded($event)"
           (demoRequested)="loadDemo()"
-          [remainingSlots]="remainingSlots()" />
+          [remainingSlots]="remainingSlots()"
+          [existingNames]="existingNames()" />
         @if (capError()) {
           <p class="manual-warning">{{ capError() }}</p>
         }

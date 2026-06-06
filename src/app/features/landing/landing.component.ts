@@ -51,6 +51,7 @@ export class LandingComponent implements OnInit, OnDestroy {
   readonly capError = signal('');
   readonly maxItems = MAX_MENU_ITEMS;
   readonly remainingSlots = computed(() => Math.max(0, MAX_MENU_ITEMS - this.menuItems().length));
+  readonly existingNames = computed(() => this.menuItems().map((i) => i.name.toLowerCase()));
   readonly atCapacity = computed(() => this.menuItems().length >= MAX_MENU_ITEMS);
   readonly hasMenu = computed(() => this.menuItems().length > 0);
   readonly readyItems = computed(() => this.menuItems().filter((i) => i.status === 'ready'));
@@ -96,7 +97,6 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   addManualItem(): void {
     if (this.menuItems().length >= MAX_MENU_ITEMS) {
-      this.manualDuplicateWarning.set('You have reached the maximum of ' + MAX_MENU_ITEMS + ' menu items. Remove an item to add more.');
       return;
     }
     const name = this.manualName().trim();
