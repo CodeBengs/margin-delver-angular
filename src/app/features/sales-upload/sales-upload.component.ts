@@ -1,8 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, computed, ElementRef, inject, OnDestroy, OnInit, signal, ViewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import * as XLSX from 'xlsx';
 
-import { DEMO_MENU, DEMO_SALES, DEMO_SUGGESTIONS } from '../../core/demo-data';
+import { getDemoSuggestions } from '../../core/demo-data';
+import { SalesService } from '../../core/services/sales.service';
+import { UploadSalesValidationComponent } from '../../shared/components/upload-sales-validation/upload-sales-validation.component';
 import { AiSuggestion, ItemClassification, ProfitabilityAnalysisResult, ProfitabilityItem } from '../../core/models/profitability.model';
 
 interface StoredMenuItem {
@@ -31,6 +34,7 @@ interface RevCostRow {
 }
 
 const MENU_STORAGE_KEY = 'md_angular_menu_v1';
+const TEMPLATE_FILENAME = 'MARGIN_DELVER_SALES_UPLOAD.xlsx';
 
 const CLASS_COLOR: Record<ItemClassification, string> = {
   star:       'var(--color-success-500, #16a953)',
@@ -70,7 +74,7 @@ const SUGGESTION_LABEL: Record<string, string> = {
 @Component({
   selector: 'app-sales-upload',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, UploadSalesValidationComponent],
   templateUrl: './sales-upload.component.html',
   styleUrl: './sales-upload.component.scss'
 })
@@ -78,6 +82,14 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
   private readonly demoListener = () => {
     this.menuItems.set(this.loadMenuItems());
   };
+  readonly currentMonthLabel = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
+  readonly daysInCurrentMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+  readonly previewDates = (() => {
+    const now = new Date();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const yyyy = now.getFullYear();
+    return [1, 2, 3].map((d) => `${String(d).padStart(2, '0')}/${mm}/${yyyy}`);
+  })();
   readonly message = signal('');
   readonly analyzing = signal(false);
   readonly dragOver = signal(false);
@@ -85,6 +97,11 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
   readonly menuItems = signal<StoredMenuItem[]>(this.loadMenuItems());
   readonly expandedSugId = signal<number>(0);
   readonly dismissedIds = signal<number[]>([]);
+  readonly validationPopup = signal<{ title: string; message: string; details: string[] } | null>(null);
+
+  private readonly salesService = inject(SalesService);
+
+  @ViewChild('fileInput') private fileInputRef!: ElementRef<HTMLInputElement>;
 
   readonly readyItems = computed(() => this.menuItems().filter((i) => i.status === 'ready' && i.est_cost_idr !== null));
   readonly isLocked = computed(() => this.readyItems().length === 0);
@@ -168,11 +185,52 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
     this.menuItems.set(this.loadMenuItems());
   }
 
-  runAnalysis(): void {
+  closeValidation(): void { this.validationPopup.set(null); }
+
+  private showValidation(title: string, message: string, details: string[] = []): void {
+    this.validationPopup.set({ title, message, details });
+  }
+
+  triggerFileBrowse(): void {
+    this.fileInputRef.nativeElement.click();
+  }
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (file) this.handleFile(file);
+  }
+
+  onFileDrop(event: DragEvent): void {
+    event.preventDefault();
+    this.dragOver.set(false);
+    const file = event.dataTransfer?.files[0];
+    if (file) this.handleFile(file);
+  }
+
+  handleFile(file: File): void {
     if (this.isLocked() || this.analyzing()) return;
     this.analyzing.set(true);
+    this.message.set('');
+
+    this.salesService.parseFile(file, this.menuItems()).then((result) => {
+      if (result.error) {
+        if (result.error.popup) {
+          this.showValidation(result.error.title, result.error.message, result.error.details);
+        } else {
+          this.message.set(result.error.message);
+        }
+        this.analyzing.set(false);
+      } else {
+        this.runAnalysis(result.salesById);
+      }
+    });
+  }
+
+  runAnalysis(salesData: Record<number, number>): void {
     window.setTimeout(() => {
-      const items = this.buildItems();
+      const items = this.buildItems(salesData);
       const totalRevenue = items.reduce((s, i) => s + i.revenue_idr, 0);
       const totalCost    = items.reduce((s, i) => s + i.est_cost_idr, 0);
       const gross        = totalRevenue - totalCost;
@@ -213,12 +271,10 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
   trackByName(_: number, item: { menu_item: string }): string { return item.menu_item; }
   trackByIdx(idx: number): number { return idx; }
 
-  /* Build per-item analysis rows.
-     Uses DEMO_SALES keyed by item id for 30-day unit counts. */
-  private buildItems(): ProfitabilityItem[] {
+  private buildItems(salesData: Record<number, number>): ProfitabilityItem[] {
     const ready = this.readyItems();
     const raw = ready.map((item) => {
-      const units    = DEMO_SALES[item.id] ?? 0;
+      const units    = salesData[item.id] ?? 0;
       const revenue  = units * item.selling_price_idr;
       const cost     = units * (item.est_cost_idr ?? 0);
       const margin   = revenue ? ((revenue - cost) / revenue) * 100 : 0;
@@ -240,7 +296,7 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
 
   /* Use pre-baked suggestions from the design's SAMPLE_SUGGESTIONS */
   private buildSuggestions(): AiSuggestion[] {
-    return DEMO_SUGGESTIONS.map((s, i) => ({
+    return getDemoSuggestions().map((s, i) => ({
       id:               i,
       suggestion_type:  s.suggestion_type as AiSuggestion['suggestion_type'],
       title:            s.title,
@@ -263,6 +319,27 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
     const sorted = [...values].sort((a, b) => a - b);
     const mid = Math.floor(sorted.length / 2);
     return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+
+  downloadTemplate(): void {
+    const items = this.menuItems();
+    const headers = ['Date', ...items.map((i) => i.name)];
+
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const rows: (string | number)[][] = [headers];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = `${String(d).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}`;
+      rows.push([date, ...items.map(() => 0)]);
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Sales');
+    XLSX.writeFile(wb, TEMPLATE_FILENAME);
   }
 
   private loadMenuItems(): StoredMenuItem[] {
