@@ -1,19 +1,42 @@
 import { Injectable } from '@angular/core';
 import * as XLSX from 'xlsx';
 
+/* ===== MENU MODEL ===== */
+export type MenuErrorCategory = 'missing_name' | 'missing_price' | 'invalid_price' | 'duplicate_item';
+
+export interface MenuError {
+  rowIndex: number;            // 1-based data row (after header)
+  field: 'name' | 'price';
+  category: MenuErrorCategory;
+  message: string;
+}
+
 export interface ParsedMenuRow {
   rowIndex: number;
   name: string;
   price: number | null;
   priceRaw: string;
-  errors: ('empty_name' | 'empty_price' | 'invalid_price')[];
-  isDuplicate?: boolean;
+  nameError?: string;          // message for the name cell, if any
+  priceError?: string;         // message for the price cell, if any
 }
 
 export interface ParsedMenuResult {
   rows: ParsedMenuRow[];
   headerDetected: boolean;
   totalRows: number;
+  errors: MenuError[];         // flat categorized list
+  fileName: string;
+}
+
+/* ===== SALES MODEL ===== */
+export type SalesErrorCategory = 'column_not_in_menu' | 'duplicate_date' | 'invalid_unit_count' | 'outside_period';
+
+export interface SalesError {
+  category: SalesErrorCategory;
+  rowIndex?: number;           // 1-based data row, for date/unit errors
+  column?: string;             // header, for unit/column errors
+  field: 'column' | 'date' | 'unit';
+  message: string;
 }
 
 export interface ParsedSalesColumn {
@@ -21,14 +44,16 @@ export interface ParsedSalesColumn {
   columnIndex: number;
   matched: boolean;
   matchedName?: string;
+  error?: string;              // for unmatched columns
 }
 
 export interface ParsedSalesRow {
   rowIndex: number;
   date: string;
   dateValid: boolean;
-  quantities: Record<string, number>;  // blank cells = 0; invalid cells clamped to 0 and reported in cellErrors
-  cellErrors: string[];  // e.g. 'invalid_qty:Nasi Goreng'
+  dateError?: string;                       // message for the date cell, if any
+  quantities: Record<string, number>;       // matched columns only; blanks/invalid stored as 0
+  cellErrors: Record<string, string>;       // header -> message, for matched-column unit cells
 }
 
 export interface ParsedSalesResult {
@@ -36,13 +61,13 @@ export interface ParsedSalesResult {
   rows: ParsedSalesRow[];
   matchedCount: number;
   unmatchedCount: number;
-  blockingErrors: string[];  // e.g. '>31 rows'
-  warnings: string[];        // e.g. 'duplicate_date:2026-05-01'
+  errors: SalesError[];        // flat categorized list
+  fileName: string;
 }
 
 @Injectable({ providedIn: 'root' })
 export class ExcelParserService {
-  parseMenuFile(file: File): Promise<ParsedMenuResult> {
+  parseMenuFile(file: File, existingNames: string[] = []): Promise<ParsedMenuResult> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -58,7 +83,7 @@ export class ExcelParserService {
           });
 
           if (!rawRows.length) {
-            resolve({ rows: [], headerDetected: false, totalRows: 0 });
+            resolve({ rows: [], headerDetected: false, totalRows: 0, errors: [], fileName: file.name });
             return;
           }
 
@@ -73,46 +98,64 @@ export class ExcelParserService {
 
           const dataRows = rawRows.slice(startIndex);
           const rows: ParsedMenuRow[] = [];
+          const errors: MenuError[] = [];
+
+          const existingSet = new Set(existingNames.map((n) => n.trim().toLowerCase()));
+          // First occurrence of each name in the file: key -> { rowIndex, name }
+          const firstSeen = new Map<string, { rowIndex: number; name: string }>();
 
           for (let i = 0; i < dataRows.length; i++) {
             const row = dataRows[i] as unknown[];
             const nameRaw = String(row[0] ?? '').trim();
             const priceRaw = String(row[1] ?? '').trim();
-            const errors: ('empty_name' | 'empty_price' | 'invalid_price')[] = [];
+            const rowIndex = i + 1;
 
-            if (!nameRaw) errors.push('empty_name');
-
-            let price: number | null = null;
-            if (!priceRaw) {
-              errors.push('empty_price');
-            } else {
-              price = this.parsePrice(priceRaw);
-              if (price === null) errors.push('invalid_price');
-            }
-
-            rows.push({
-              rowIndex: i + 1,
+            const parsedRow: ParsedMenuRow = {
+              rowIndex,
               name: nameRaw,
-              price,
-              priceRaw,
-              errors
-            });
-          }
+              price: null,
+              priceRaw
+            };
 
-          // Mark duplicates
-          const nameCounts = new Map<string, number>();
-          for (const row of rows) {
-            if (!row.name) continue;
-            const key = row.name.toLowerCase();
-            nameCounts.set(key, (nameCounts.get(key) ?? 0) + 1);
-          }
-          for (const row of rows) {
-            if (row.name && (nameCounts.get(row.name.toLowerCase()) ?? 0) > 1) {
-              row.isDuplicate = true;
+            // Name validation
+            if (!nameRaw) {
+              parsedRow.nameError = 'Menu name is required';
+              errors.push({ rowIndex, field: 'name', category: 'missing_name', message: parsedRow.nameError });
             }
+
+            // Price validation
+            if (!priceRaw) {
+              parsedRow.priceError = 'Selling price is required';
+              errors.push({ rowIndex, field: 'price', category: 'missing_price', message: parsedRow.priceError });
+            } else {
+              const price = this.parsePrice(priceRaw);
+              if (price === null) {
+                parsedRow.priceError = 'Not a number';
+                errors.push({ rowIndex, field: 'price', category: 'invalid_price', message: parsedRow.priceError });
+              } else {
+                parsedRow.price = price;
+              }
+            }
+
+            // Duplicate detection (skip rows already missing a name)
+            if (nameRaw) {
+              const key = nameRaw.toLowerCase();
+              const earlier = firstSeen.get(key);
+              if (earlier) {
+                parsedRow.nameError = `Duplicate of row ${earlier.rowIndex} — '${earlier.name}'`;
+                errors.push({ rowIndex, field: 'name', category: 'duplicate_item', message: parsedRow.nameError });
+              } else if (existingSet.has(key)) {
+                parsedRow.nameError = `'${nameRaw}' is already in your menu`;
+                errors.push({ rowIndex, field: 'name', category: 'duplicate_item', message: parsedRow.nameError });
+              } else {
+                firstSeen.set(key, { rowIndex, name: nameRaw });
+              }
+            }
+
+            rows.push(parsedRow);
           }
 
-          resolve({ rows, headerDetected, totalRows: rows.length });
+          resolve({ rows, headerDetected, totalRows: rows.length, errors, fileName: file.name });
         } catch (err) {
           reject(err);
         }
@@ -137,8 +180,7 @@ export class ExcelParserService {
             defval: ''
           });
 
-          const warnings: string[] = [];
-          const blockingErrors: string[] = [];
+          const errors: SalesError[] = [];
 
           if (!rawRows.length) {
             resolve({
@@ -146,8 +188,8 @@ export class ExcelParserService {
               rows: [],
               matchedCount: 0,
               unmatchedCount: 0,
-              warnings,
-              blockingErrors
+              errors,
+              fileName: file.name
             });
             return;
           }
@@ -163,71 +205,106 @@ export class ExcelParserService {
             const matchedName = knownMenuNames.find(
               (n) => n.trim().toLowerCase() === header.toLowerCase()
             );
-            columns.push({
+            const column: ParsedSalesColumn = {
               header,
               columnIndex: c,
               matched: !!matchedName,
               matchedName
-            });
+            };
+            if (!matchedName) {
+              column.error = `'${header}' is not in your menu — add it first or remove the column`;
+              errors.push({ category: 'column_not_in_menu', field: 'column', column: header, message: column.error });
+            }
+            columns.push(column);
           }
 
           const matchedCount = columns.filter((c) => c.matched).length;
           const unmatchedCount = columns.filter((c) => !c.matched).length;
 
+          // PERIOD = previous calendar month relative to NOW
+          const now = new Date();
+          let pMonth = now.getMonth() - 1;
+          let pYear = now.getFullYear();
+          if (pMonth < 0) { pMonth = 11; pYear -= 1; }
+
           // Data rows start from index 1
           const dataRows = rawRows.slice(1);
-
-          if (dataRows.length > 31) {
-            blockingErrors.push(`Too many rows: ${dataRows.length} (maximum is 31)`);
-          }
-
           const rows: ParsedSalesRow[] = [];
-          const seenDates = new Map<string, number>();
+          const seenDates = new Map<string, number>();   // normalized date -> display row index of first occurrence
 
           for (let i = 0; i < dataRows.length; i++) {
             const row = dataRows[i] as unknown[];
             const dateRaw = String(row[0] ?? '').trim();
-            const rowErrors: string[] = [];
+            const rowIndex = i + 1;
 
-            const { dateStr, dateValid } = this.parseDate(dateRaw);
-            if (!dateValid) rowErrors.push('invalid_date');
+            const { dateStr, dateValid, date } = this.parseDate(dateRaw);
 
-            // Track duplicate dates
-            if (dateValid && dateStr) {
-              const prev = seenDates.get(dateStr);
-              if (prev !== undefined) {
-                if (!warnings.some((w) => w.includes(dateStr))) {
-                  warnings.push(`Duplicate date: ${dateStr}`);
-                }
+            const parsedRow: ParsedSalesRow = {
+              rowIndex,
+              date: dateRaw,
+              dateValid,
+              quantities: {},
+              cellErrors: {}
+            };
+
+            // Date checks — pick ONE date error per row (prefer duplicate_date over outside_period)
+            let dateError: string | undefined;
+            let dateCategory: SalesErrorCategory | undefined;
+
+            if (!dateValid || !date) {
+              dateError = 'Not a valid date';
+              dateCategory = 'outside_period';
+            } else {
+              // Check duplicate first
+              const earlier = seenDates.get(dateStr);
+              if (earlier !== undefined) {
+                dateError = earlier === rowIndex - 1
+                  ? `Duplicate of the row above (${dateRaw})`
+                  : `Duplicate of row ${earlier} (${dateRaw})`;
+                dateCategory = 'duplicate_date';
+              } else if (date.getMonth() !== pMonth || date.getFullYear() !== pYear) {
+                dateError = 'Outside the 31-day period';
+                dateCategory = 'outside_period';
               }
-              seenDates.set(dateStr, i);
+              // Track this date for later duplicate detection
+              if (!seenDates.has(dateStr)) seenDates.set(dateStr, rowIndex);
             }
 
-            const quantities: Record<string, number> = {};
-            for (let c = 0; c < columns.length; c++) {
-              const col = columns[c];
+            if (dateError && dateCategory) {
+              parsedRow.dateError = dateError;
+              errors.push({ category: dateCategory, field: 'date', rowIndex, message: dateError });
+            }
+
+            // Unit cells — matched columns only
+            for (const col of columns) {
+              if (!col.matched) continue;
               const cellRaw = String(row[col.columnIndex] ?? '').trim();
 
               if (!cellRaw) {
-                quantities[col.header] = 0;
-              } else {
-                const qty = parseInt(cellRaw, 10);
-                if (isNaN(qty) || qty < 0) {
-                  quantities[col.header] = 0;
-                  rowErrors.push(`invalid_qty:${col.header}`);
-                } else {
-                  quantities[col.header] = qty;
-                }
+                parsedRow.cellErrors[col.header] = 'Unit count is empty';
+                errors.push({ category: 'invalid_unit_count', field: 'unit', rowIndex, column: col.header, message: parsedRow.cellErrors[col.header] });
+                parsedRow.quantities[col.header] = 0;
+                continue;
               }
+
+              if (cellRaw.startsWith('-') || Number(cellRaw) < 0) {
+                parsedRow.cellErrors[col.header] = "Units can't be negative";
+                errors.push({ category: 'invalid_unit_count', field: 'unit', rowIndex, column: col.header, message: parsedRow.cellErrors[col.header] });
+                parsedRow.quantities[col.header] = 0;
+                continue;
+              }
+
+              if (!/^\d+$/.test(cellRaw)) {
+                parsedRow.cellErrors[col.header] = 'Not a number';
+                errors.push({ category: 'invalid_unit_count', field: 'unit', rowIndex, column: col.header, message: parsedRow.cellErrors[col.header] });
+                parsedRow.quantities[col.header] = 0;
+                continue;
+              }
+
+              parsedRow.quantities[col.header] = parseInt(cellRaw, 10);
             }
 
-            rows.push({
-              rowIndex: i + 1,
-              date: dateRaw,
-              dateValid,
-              quantities,
-              cellErrors: rowErrors
-            });
+            rows.push(parsedRow);
           }
 
           resolve({
@@ -235,8 +312,8 @@ export class ExcelParserService {
             rows,
             matchedCount,
             unmatchedCount,
-            blockingErrors,
-            warnings
+            errors,
+            fileName: file.name
           });
         } catch (err) {
           reject(err);
@@ -261,8 +338,8 @@ export class ExcelParserService {
     return num;
   }
 
-  private parseDate(raw: string): { dateStr: string; dateValid: boolean } {
-    if (!raw) return { dateStr: '', dateValid: false };
+  private parseDate(raw: string): { dateStr: string; dateValid: boolean; date: Date | null } {
+    if (!raw) return { dateStr: '', dateValid: false, date: null };
 
     // Accept DD/MM/YYYY
     const ddmmyyyy = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
@@ -274,7 +351,7 @@ export class ExcelParserService {
         date.getMonth() === Number(m) - 1 &&
         date.getDate() === Number(d)
       ) {
-        return { dateStr: `${y}-${m}-${d}`, dateValid: true };
+        return { dateStr: `${y}-${m}-${d}`, dateValid: true, date };
       }
     }
 
@@ -288,10 +365,10 @@ export class ExcelParserService {
         date.getMonth() === Number(m) - 1 &&
         date.getDate() === Number(d)
       ) {
-        return { dateStr: `${y}-${m}-${d}`, dateValid: true };
+        return { dateStr: `${y}-${m}-${d}`, dateValid: true, date };
       }
     }
 
-    return { dateStr: raw, dateValid: false };
+    return { dateStr: raw, dateValid: false, date: null };
   }
 }

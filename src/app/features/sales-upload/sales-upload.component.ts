@@ -118,9 +118,10 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
 
   readonly canAnalyse = computed(() => {
     const s = this.parsedSales();
-    if (!s) return false;
-    return s.blockingErrors.length === 0 && s.matchedCount > 0;
+    return !!s && s.errors.length === 0 && s.matchedCount > 0;
   });
+
+  readonly hasUploadErrors = computed(() => (this.parsedSales()?.errors.length ?? 0) > 0);
 
   readonly previewRows = computed(() => {
     const s = this.parsedSales();
@@ -203,7 +204,11 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
   }
 
   hasCellError(row: ParsedSalesRow, colHeader: string): boolean {
-    return row.cellErrors.some(e => e.includes(colHeader));
+    return !!row.cellErrors[colHeader];
+  }
+
+  rowHasErrors(row: ParsedSalesRow): boolean {
+    return !row.dateValid || !!row.dateError || Object.keys(row.cellErrors).length > 0;
   }
 
   refreshMenu(): void {

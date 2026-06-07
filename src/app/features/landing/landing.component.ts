@@ -124,7 +124,8 @@ export class LandingComponent implements OnInit, OnDestroy {
     const newItems: DraftMenuItem[] = [];
     let idx = 0;
     for (const row of result.rows) {
-      if (row.errors.length > 0) continue;
+      // Emitted results are clean; guard defensively against any malformed rows.
+      if (row.nameError || row.priceError || !row.name || row.price === null) continue;
       const isDuplicate = existing.some(
         (i) => i.name.toLowerCase() === row.name.toLowerCase()
       ) || newItems.some(

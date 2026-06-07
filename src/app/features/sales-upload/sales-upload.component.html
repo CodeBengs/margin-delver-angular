@@ -102,8 +102,8 @@
                 {{ parsedSales()!.matchedCount }} menu item(s) matched.
               </p>
 
-              @for (err of parsedSales()!.blockingErrors; track err) {
-                <p class="upload-error">{{ err }}</p>
+              @for (err of parsedSales()!.errors; track err.message) {
+                <p class="upload-error">{{ err.message }}</p>
               }
 
               <!-- Column matching badges -->
@@ -138,7 +138,7 @@
                   </thead>
                   <tbody>
                     @for (row of previewRows(); track row.rowIndex) {
-                      <tr [class.row-error]="row.cellErrors.length > 0 || !row.dateValid">
+                      <tr [class.row-error]="rowHasErrors(row)">
                         <td>{{ row.date }}</td>
                         @for (col of parsedSales()!.columns; track col.header) {
                           @if (col.matched) {
@@ -157,11 +157,6 @@
                   </button>
                 }
               </div>
-
-              <!-- Warnings -->
-              @for (w of parsedSales()!.warnings; track w) {
-                <p class="upload-warning">{{ w }}</p>
-              }
 
               <!-- Actions -->
               <div class="preview-actions">

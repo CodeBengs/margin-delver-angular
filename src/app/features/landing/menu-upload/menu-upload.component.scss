@@ -32,27 +32,6 @@
   margin-top: var(--space-5, 16px);
 }
 
-/* ===== IDR CONFIRMATION PANEL ===== */
-.upload-notice-panel {
-  background: var(--bg-surface, #fff);
-  border: 1px solid var(--border-subtle, #ececec);
-  border-radius: var(--radius-lg, 12px);
-  padding: var(--space-7, 24px);
-  margin-top: var(--space-5, 16px);
-  box-shadow: var(--elevation-1, 0 1px 4px rgba(0,0,0,.08));
-}
-.upload-notice-title {
-  font: var(--fw-semibold, 600) var(--fs-size-16, 16px)/1.3 var(--font-sans, Inter, sans-serif);
-  color: var(--fg-strong, #222);
-}
-.upload-notice-body {
-  font-size: var(--fs-size-14, 14px);
-  color: var(--fg-muted, #666);
-  line-height: 1.55;
-  margin-top: var(--space-3, 8px);
-  max-width: 640px;
-}
-
 /* ===== PREVIEW TABLE ===== */
 .upload-preview-table {
   width: 100%;
@@ -82,20 +61,57 @@
 }
 .upload-preview-table tr:last-child td { border-bottom: none; }
 
-/* ===== ROW STATES ===== */
-.row-error td {
-  background: var(--color-danger-50, #ffeceb);
-  box-shadow: inset 3px 0 0 var(--color-danger-500, #e53935);
-}
-.row-warning td {
-  background: var(--color-warning-50, #fff8e5);
-  box-shadow: inset 3px 0 0 var(--color-warning-500, #f5a623);
-}
-
 /* ===== ACTIONS ===== */
 .upload-actions {
   display: flex;
   align-items: center;
   gap: var(--space-3, 8px);
   margin-top: var(--space-5, 16px);
+}
+
+/* ===== IMPORT-BLOCKED TABLE (projected into app-import-blocked) ===== */
+.ib-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--border-subtle, #eee);
+  border-radius: var(--radius-md, 8px);
+  overflow: hidden;
+  font-size: 12.5px;
+}
+.ib-table th {
+  text-align: left;
+  font: var(--fw-semibold, 600) var(--fs-size-12, 12px)/1 var(--font-sans, Inter, sans-serif);
+  color: var(--fg-muted, #666);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: var(--space-3, 8px) var(--space-4, 12px);
+  background: var(--color-grey-50, #fafafa);
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border-default, #e0e0df);
+}
+.ib-table td {
+  padding: var(--space-3, 8px) var(--space-4, 12px);
+  color: var(--fg-default, #333);
+  border-bottom: 1px solid var(--border-subtle, #eee);
+  vertical-align: top;
+}
+.ib-table tr:last-child td { border-bottom: none; }
+.ib-col-num {
+  width: 48px;
+  color: var(--fg-muted, #888);
+  white-space: nowrap;
+}
+.ib-cell-bad {
+  background: var(--color-danger-50, #FFE5E5);
+  box-shadow: inset 0 0 0 1px var(--color-danger-300, #FF6B6B);
+}
+.ib-bad-text { color: var(--color-danger-700, #B30000); }
+.ib-empty {
+  color: var(--fg-muted, #999);
+  font-style: italic;
+}
+.ib-cell-msg {
+  margin-top: var(--space-2, 4px);
+  font-size: var(--fs-size-12, 12px);
+  color: var(--color-danger-700, #B30000);
 }
