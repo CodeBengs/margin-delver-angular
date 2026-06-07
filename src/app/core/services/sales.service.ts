@@ -44,6 +44,14 @@ export class SalesService {
     file: File,
     menuItems: { id: number; name: string }[]
   ): Promise<SalesParseResult> {
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (ext !== 'xlsx' && ext !== 'xls') {
+      return this.popupError(
+        'Unsupported file format',
+        `"${file.name}" is not a supported format. Please upload an .xlsx or .xls file.`
+      );
+    }
+
     let buffer: ArrayBuffer;
     try {
       buffer = await this.readFileAsBuffer(file);
