@@ -337,8 +337,25 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
     }
 
     const ws = XLSX.utils.aoa_to_sheet(rows);
+
+    const rulesRows: string[][] = [
+      ['Rule', 'Requirement'],
+      ['File format', '.xlsx or .xls only'],
+      ['Date column', 'First non-empty column must be named "Date" (case-insensitive)'],
+      ['Date format', 'DD/MM/YYYY (e.g. 01/06/2026). Excel serial-number dates are also accepted.'],
+      ['Max data rows', '31 rows (one full calendar month). Files with more than 31 rows are rejected.'],
+      ['Max menu columns', '20 columns (columns B–U). Columns beyond U are silently ignored.'],
+      ['Unique dates', 'Each date must appear exactly once. Duplicate dates trigger a validation error.'],
+      ['Unique column names', 'Each menu column header must be unique. Duplicate names trigger a validation error.'],
+      ['Non-numeric cells', 'Any cell that cannot be parsed as a number is treated as 0.'],
+      ['Empty column headers', 'Columns with no header name are skipped entirely.'],
+      ['Name matching', 'Column names are matched to your menu items case-insensitively (trimmed). Unmatched columns are ignored.'],
+    ];
+    const wsRules = XLSX.utils.aoa_to_sheet(rulesRows);
+
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Sales');
+    XLSX.utils.book_append_sheet(wb, ws, 'SALES DATA');
+    XLSX.utils.book_append_sheet(wb, wsRules, 'RULES');
     XLSX.writeFile(wb, TEMPLATE_FILENAME);
   }
 
