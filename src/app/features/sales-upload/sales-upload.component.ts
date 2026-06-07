@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, OnDestroy, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import * as XLSX from 'xlsx';
 
-import { DEMO_MENU, DEMO_SALES, DEMO_SUGGESTIONS } from '../../core/demo-data';
+import { getDemoSales, getDemoSuggestions } from '../../core/demo-data';
 import { AiSuggestion, ItemClassification, ProfitabilityAnalysisResult, ProfitabilityItem } from '../../core/models/profitability.model';
 
 interface StoredMenuItem {
@@ -31,6 +32,7 @@ interface RevCostRow {
 }
 
 const MENU_STORAGE_KEY = 'md_angular_menu_v1';
+const TEMPLATE_FILENAME = 'MARGIN_DELVER_SALES_UPLOAD.xlsx';
 
 const CLASS_COLOR: Record<ItemClassification, string> = {
   star:       'var(--color-success-500, #16a953)',
@@ -218,7 +220,7 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
   private buildItems(): ProfitabilityItem[] {
     const ready = this.readyItems();
     const raw = ready.map((item) => {
-      const units    = DEMO_SALES[item.id] ?? 0;
+      const units    = getDemoSales()[item.id] ?? 0;
       const revenue  = units * item.selling_price_idr;
       const cost     = units * (item.est_cost_idr ?? 0);
       const margin   = revenue ? ((revenue - cost) / revenue) * 100 : 0;
@@ -240,7 +242,7 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
 
   /* Use pre-baked suggestions from the design's SAMPLE_SUGGESTIONS */
   private buildSuggestions(): AiSuggestion[] {
-    return DEMO_SUGGESTIONS.map((s, i) => ({
+    return getDemoSuggestions().map((s, i) => ({
       id:               i,
       suggestion_type:  s.suggestion_type as AiSuggestion['suggestion_type'],
       title:            s.title,
@@ -263,6 +265,27 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
     const sorted = [...values].sort((a, b) => a - b);
     const mid = Math.floor(sorted.length / 2);
     return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+
+  downloadTemplate(): void {
+    const items = this.menuItems();
+    const headers = ['Date', ...items.map((i) => i.name)];
+
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const rows: (string | number)[][] = [headers];
+    for (let d = 1; d <= daysInMonth; d++) {
+      const date = `${String(d).padStart(2, '0')}/${String(month + 1).padStart(2, '0')}/${year}`;
+      rows.push([date, ...items.map(() => 0)]);
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Sales');
+    XLSX.writeFile(wb, TEMPLATE_FILENAME);
   }
 
   private loadMenuItems(): StoredMenuItem[] {
