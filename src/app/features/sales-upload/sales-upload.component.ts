@@ -80,6 +80,8 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
   private readonly demoListener = () => {
     this.menuItems.set(this.loadMenuItems());
   };
+  readonly currentMonthLabel = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
+  readonly daysInCurrentMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
   readonly message = signal('');
   readonly analyzing = signal(false);
   readonly dragOver = signal(false);
