@@ -5,10 +5,11 @@ import { RouterLink } from '@angular/router';
 import { DEMO_SALES, DEMO_SUGGESTIONS } from '../../core/demo-data';
 import { MenuItem } from '../../core/models/menu-item.model';
 import { AiSuggestion, ItemClassification, ProfitabilityAnalysisResult, ProfitabilityItem } from '../../core/models/profitability.model';
-import { ExcelParserService, ParsedSalesResult, ParsedSalesRow } from '../../core/services/excel-parser.service';
+import { ExcelParserService, ParsedSalesResult, ParsedSalesRow, SalesErrorCategory } from '../../core/services/excel-parser.service';
 import { ExportService } from '../../core/services/export.service';
 import { SalesService } from '../../core/services/sales.service';
 import { FileDropZoneComponent } from '../../shared/components/file-drop-zone/file-drop-zone.component';
+import { ImportBlockedComponent, ImportBlockedCategory } from '../../shared/components/import-blocked/import-blocked.component';
 
 interface StoredMenuItem {
   id: number;
@@ -72,10 +73,18 @@ const SUGGESTION_LABEL: Record<string, string> = {
   reprice:         'Reprice',
 };
 
+const SALES_CATEGORY_LABELS: Record<SalesErrorCategory, string> = {
+  column_not_in_menu: 'Column not in your menu',
+  duplicate_date:     'Duplicate date row',
+  invalid_unit_count: 'Invalid unit count',
+  outside_period:     'Outside the 31-day period'
+};
+const SALES_CATEGORY_ORDER: SalesErrorCategory[] = ['column_not_in_menu', 'duplicate_date', 'invalid_unit_count', 'outside_period'];
+
 @Component({
   selector: 'app-sales-upload',
   standalone: true,
-  imports: [CommonModule, RouterLink, FileDropZoneComponent],
+  imports: [CommonModule, RouterLink, FileDropZoneComponent, ImportBlockedComponent],
   templateUrl: './sales-upload.component.html',
   styleUrl: './sales-upload.component.scss'
 })
@@ -122,6 +131,26 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
   });
 
   readonly hasUploadErrors = computed(() => (this.parsedSales()?.errors.length ?? 0) > 0);
+
+  readonly salesCategories = computed<ImportBlockedCategory[]>(() => {
+    const s = this.parsedSales();
+    if (!s) return [];
+    const counts = new Map<SalesErrorCategory, number>();
+    for (const err of s.errors) {
+      counts.set(err.category, (counts.get(err.category) ?? 0) + 1);
+    }
+    return SALES_CATEGORY_ORDER
+      .filter((cat) => (counts.get(cat) ?? 0) > 0)
+      .map((cat) => ({ label: SALES_CATEGORY_LABELS[cat], count: counts.get(cat) ?? 0 }));
+  });
+
+  readonly salesRowsAffected = computed(() => {
+    const s = this.parsedSales();
+    if (!s) return 0;
+    return s.rows.filter((r) => r.dateError || Object.keys(r.cellErrors).length > 0).length;
+  });
+
+  readonly salesHighlightedCount = computed(() => this.parsedSales()?.errors.length ?? 0);
 
   readonly previewRows = computed(() => {
     const s = this.parsedSales();
@@ -209,6 +238,30 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
 
   rowHasErrors(row: ParsedSalesRow): boolean {
     return !row.dateValid || !!row.dateError || Object.keys(row.cellErrors).length > 0;
+  }
+
+  objKeys(o: Record<string, string>): string[] {
+    return Object.keys(o);
+  }
+
+  /** Value to show in a unit cell: raw text when the cell is invalid, otherwise the parsed quantity.
+   *  For unmatched columns (no quantity), falls back to the raw cell text. */
+  salesCellDisplay(row: ParsedSalesRow, header: string): string {
+    if (row.cellErrors[header]) {
+      return row.rawCells[header] ?? '';
+    }
+    if (header in row.quantities) {
+      return String(row.quantities[header] ?? 0);
+    }
+    return row.rawCells[header] ?? '';
+  }
+
+  salesCellError(row: ParsedSalesRow, header: string): string {
+    return row.cellErrors[header] ?? '';
+  }
+
+  onReupload(): void {
+    this.resetUpload();
   }
 
   refreshMenu(): void {

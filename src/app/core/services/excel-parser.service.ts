@@ -53,7 +53,8 @@ export interface ParsedSalesRow {
   dateValid: boolean;
   dateError?: string;                       // message for the date cell, if any
   quantities: Record<string, number>;       // matched columns only; blanks/invalid stored as 0
-  cellErrors: Record<string, string>;       // header -> message, for matched-column unit cells
+  rawCells: Record<string, string>;          // header -> trimmed raw cell string, ALL columns ('' for empty)
+  cellErrors: Record<string, string>;        // header -> message, for matched-column unit cells
 }
 
 export interface ParsedSalesResult {
@@ -244,8 +245,14 @@ export class ExcelParserService {
               date: dateRaw,
               dateValid,
               quantities: {},
+              rawCells: {},
               cellErrors: {}
             };
+
+            // Capture trimmed raw cell strings for ALL columns (matched + unmatched).
+            for (const col of columns) {
+              parsedRow.rawCells[col.header] = String(row[col.columnIndex] ?? '').trim();
+            }
 
             // Date checks — pick ONE date error per row (prefer duplicate_date over outside_period)
             let dateError: string | undefined;

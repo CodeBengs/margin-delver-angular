@@ -93,18 +93,67 @@
             }
           }
 
-          <!-- Preview section (shown below drop zone when in preview state) -->
-          @if (uploadState() === 'preview' && parsedSales()) {
+          <!-- Preview WITH errors: Import blocked panel -->
+          @if (uploadState() === 'preview' && hasUploadErrors()) {
+            <app-import-blocked
+              [fileName]="parsedSales()!.fileName"
+              [errorCount]="parsedSales()!.errors.length"
+              [rowsAffected]="salesRowsAffected()"
+              [totalRows]="parsedSales()!.rows.length"
+              rowsNoun="day rows"
+              previewTitle="Preview · Sales"
+              [categories]="salesCategories()"
+              [highlightedCount]="salesHighlightedCount()"
+              (cancel)="resetUpload()"
+              (reupload)="onReupload()">
+              <div class="ib-table-scroll">
+                <table class="ib-table">
+                  <thead>
+                    <tr>
+                      <th class="ib-col-num">#</th>
+                      <th>Date</th>
+                      @for (col of parsedSales()!.columns; track col.header) {
+                        <th [class.ib-col-head-bad]="!col.matched">
+                          {{ col.header }}
+                          @if (!col.matched && col.error) { <div class="ib-cell-msg">{{ col.error }}</div> }
+                        </th>
+                      }
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (row of parsedSales()!.rows; track row.rowIndex) {
+                      <tr [class.ib-row-bad]="row.dateError || objKeys(row.cellErrors).length">
+                        <td class="ib-col-num">{{ row.rowIndex }}</td>
+                        <td [class.ib-cell-bad]="row.dateError">
+                          <span [class.ib-bad-text]="row.dateError">{{ row.date || 'empty' }}</span>
+                          @if (row.dateError) { <div class="ib-cell-msg">{{ row.dateError }}</div> }
+                        </td>
+                        @for (col of parsedSales()!.columns; track col.header) {
+                          <td [class.ib-cell-bad]="salesCellError(row, col.header)">
+                            @if (salesCellError(row, col.header) && !salesCellDisplay(row, col.header)) {
+                              <span class="ib-empty">empty</span>
+                            } @else {
+                              <span [class.ib-bad-text]="salesCellError(row, col.header)">{{ salesCellDisplay(row, col.header) }}</span>
+                            }
+                            @if (salesCellError(row, col.header)) { <div class="ib-cell-msg">{{ salesCellError(row, col.header) }}</div> }
+                          </td>
+                        }
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </app-import-blocked>
+          }
+
+          <!-- Preview WITHOUT errors: clean preview + Confirm & Analyse -->
+          @if (uploadState() === 'preview' && !hasUploadErrors() && parsedSales()) {
             <div class="upload-preview">
 
               <p class="upload-notice">
                 Sales data loaded: {{ parsedSales()!.rows.length }} days,
                 {{ parsedSales()!.matchedCount }} menu item(s) matched.
               </p>
-
-              @for (err of parsedSales()!.errors; track err.message) {
-                <p class="upload-error">{{ err.message }}</p>
-              }
 
               <!-- Column matching badges -->
               <div class="col-match-row">
