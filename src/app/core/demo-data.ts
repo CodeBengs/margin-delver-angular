@@ -149,6 +149,27 @@ export const DEMO_MENU: DemoMenuItem[] = [
   },
 ];
 
+/* ============================================================
+   Getters — localStorage takes priority, hardcoded as fallback
+   ============================================================ */
+const LS_MENU_KEY = 'md_angular_menu_v1';
+
+export function getDemoMenu(): DemoMenuItem[] {
+  try {
+    const stored = JSON.parse(localStorage.getItem(LS_MENU_KEY) ?? 'null');
+    if (Array.isArray(stored) && stored.length > 0) return stored as DemoMenuItem[];
+  } catch { /* ignore */ }
+  return DEMO_MENU;
+}
+
+export function getDemoSales(): Record<number, number> {
+  return DEMO_SALES;
+}
+
+export function getDemoSuggestions(): DemoSuggestion[] {
+  return DEMO_SUGGESTIONS;
+}
+
 /* 30-day unit sales — keyed by menu item id, matches design's SAMPLE_SALES */
 export const DEMO_SALES: Record<number, number> = {
   1: 420,   // Nasi Goreng Spesial
