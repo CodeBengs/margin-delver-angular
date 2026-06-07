@@ -82,6 +82,12 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
   };
   readonly currentMonthLabel = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
   readonly daysInCurrentMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+  readonly previewDates = (() => {
+    const now = new Date();
+    const mm = String(now.getMonth() + 1).padStart(2, '0');
+    const yyyy = now.getFullYear();
+    return [1, 2, 3].map((d) => `${String(d).padStart(2, '0')}/${mm}/${yyyy}`);
+  })();
   readonly message = signal('');
   readonly analyzing = signal(false);
   readonly dragOver = signal(false);
