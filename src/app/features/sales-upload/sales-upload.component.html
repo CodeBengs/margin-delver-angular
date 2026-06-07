@@ -66,19 +66,20 @@
           </div>
         </div>
         <div class="panel-body">
+          <input #fileInput type="file" accept=".xlsx,.xls" style="display:none" (change)="onFileSelected($event)" />
           <div class="drop"
                [class.drop-over]="dragOver()"
                [class.drop-busy]="analyzing()"
-               (click)="analyzing() ? null : runAnalysis()"
+               (click)="analyzing() ? null : triggerFileBrowse()"
                (dragover)="$event.preventDefault(); dragOver.set(true)"
                (dragleave)="dragOver.set(false)"
-               (drop)="$event.preventDefault(); dragOver.set(false); runAnalysis()">
+               (drop)="onFileDrop($event)">
             @if (analyzing()) {
               <div class="drop-glyph drop-glyph-busy">
                 <img src="ds/icons/loading.svg" alt="" width="28" height="28" />
               </div>
               <div class="drop-title">Analyzing sales · matching to menu · generating suggestions…</div>
-              <div class="drop-sub">Claude is reviewing 30 days of data against {{ readyItems().length }} menu items.</div>
+              <div class="drop-sub">Reading file and matching to {{ readyItems().length }} menu items…</div>
             } @else {
               <div class="drop-glyph">
                 <img src="ds/icons/data.svg" alt="" width="28" height="28" />
@@ -86,7 +87,7 @@
               <div class="drop-title">Drop your sales Excel file here</div>
               <div class="drop-sub">file format .xlsx · 1–{{ daysInCurrentMonth }} day rows · {{ currentMonthLabel }} · column 1 = Date, remaining columns = menu item names</div>
               <div class="drop-cta">
-                <button type="button" class="btn btn-secondary" (click)="$event.stopPropagation()">Browse files</button>
+                <button type="button" class="btn btn-secondary" (click)="$event.stopPropagation(); triggerFileBrowse()">Browse files</button>
               </div>
             }
           </div>
@@ -347,3 +348,11 @@
   }
 
 </div>
+
+@if (validationPopup(); as popup) {
+  <app-upload-sales-validation
+    [title]="popup.title"
+    [message]="popup.message"
+    [details]="popup.details"
+    (closed)="closeValidation()" />
+}

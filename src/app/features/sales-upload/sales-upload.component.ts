@@ -1,9 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, computed, ElementRef, inject, OnDestroy, OnInit, signal, ViewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import * as XLSX from 'xlsx';
 
-import { getDemoSales, getDemoSuggestions } from '../../core/demo-data';
+import { getDemoSuggestions } from '../../core/demo-data';
+import { SalesService } from '../../core/services/sales.service';
+import { UploadSalesValidationComponent } from '../../shared/components/upload-sales-validation/upload-sales-validation.component';
 import { AiSuggestion, ItemClassification, ProfitabilityAnalysisResult, ProfitabilityItem } from '../../core/models/profitability.model';
 
 interface StoredMenuItem {
@@ -72,7 +74,7 @@ const SUGGESTION_LABEL: Record<string, string> = {
 @Component({
   selector: 'app-sales-upload',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, UploadSalesValidationComponent],
   templateUrl: './sales-upload.component.html',
   styleUrl: './sales-upload.component.scss'
 })
@@ -95,6 +97,11 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
   readonly menuItems = signal<StoredMenuItem[]>(this.loadMenuItems());
   readonly expandedSugId = signal<number>(0);
   readonly dismissedIds = signal<number[]>([]);
+  readonly validationPopup = signal<{ title: string; message: string; details: string[] } | null>(null);
+
+  private readonly salesService = inject(SalesService);
+
+  @ViewChild('fileInput') private fileInputRef!: ElementRef<HTMLInputElement>;
 
   readonly readyItems = computed(() => this.menuItems().filter((i) => i.status === 'ready' && i.est_cost_idr !== null));
   readonly isLocked = computed(() => this.readyItems().length === 0);
@@ -178,11 +185,52 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
     this.menuItems.set(this.loadMenuItems());
   }
 
-  runAnalysis(): void {
+  closeValidation(): void { this.validationPopup.set(null); }
+
+  private showValidation(title: string, message: string, details: string[] = []): void {
+    this.validationPopup.set({ title, message, details });
+  }
+
+  triggerFileBrowse(): void {
+    this.fileInputRef.nativeElement.click();
+  }
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+    if (file) this.handleFile(file);
+  }
+
+  onFileDrop(event: DragEvent): void {
+    event.preventDefault();
+    this.dragOver.set(false);
+    const file = event.dataTransfer?.files[0];
+    if (file) this.handleFile(file);
+  }
+
+  handleFile(file: File): void {
     if (this.isLocked() || this.analyzing()) return;
     this.analyzing.set(true);
+    this.message.set('');
+
+    this.salesService.parseFile(file, this.menuItems()).then((result) => {
+      if (result.error) {
+        if (result.error.popup) {
+          this.showValidation(result.error.title, result.error.message, result.error.details);
+        } else {
+          this.message.set(result.error.message);
+        }
+        this.analyzing.set(false);
+      } else {
+        this.runAnalysis(result.salesById);
+      }
+    });
+  }
+
+  runAnalysis(salesData: Record<number, number>): void {
     window.setTimeout(() => {
-      const items = this.buildItems();
+      const items = this.buildItems(salesData);
       const totalRevenue = items.reduce((s, i) => s + i.revenue_idr, 0);
       const totalCost    = items.reduce((s, i) => s + i.est_cost_idr, 0);
       const gross        = totalRevenue - totalCost;
@@ -223,12 +271,10 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
   trackByName(_: number, item: { menu_item: string }): string { return item.menu_item; }
   trackByIdx(idx: number): number { return idx; }
 
-  /* Build per-item analysis rows.
-     Uses DEMO_SALES keyed by item id for 30-day unit counts. */
-  private buildItems(): ProfitabilityItem[] {
+  private buildItems(salesData: Record<number, number>): ProfitabilityItem[] {
     const ready = this.readyItems();
     const raw = ready.map((item) => {
-      const units    = getDemoSales()[item.id] ?? 0;
+      const units    = salesData[item.id] ?? 0;
       const revenue  = units * item.selling_price_idr;
       const cost     = units * (item.est_cost_idr ?? 0);
       const margin   = revenue ? ((revenue - cost) / revenue) * 100 : 0;

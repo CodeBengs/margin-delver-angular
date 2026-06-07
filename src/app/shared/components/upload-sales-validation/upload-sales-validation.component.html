@@ -1,0 +1,19 @@
+<div class="modal-overlay" (click)="closed.emit()">
+  <div class="modal" (click)="$event.stopPropagation()">
+    <div class="modal-icon">
+      <img src="assets/opsss.png" alt="" />
+    </div>
+    <div class="modal-title">{{ title }}</div>
+    <div class="modal-message">{{ message }}</div>
+    @if (details.length > 0) {
+      <div class="modal-details">
+        @for (line of details; track $index) {
+          <div class="modal-details-row">{{ line }}</div>
+        }
+      </div>
+    }
+    <div class="modal-actions">
+      <button type="button" class="btn btn-primary" (click)="closed.emit()">Got it</button>
+    </div>
+  </div>
+</div>
