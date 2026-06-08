@@ -1,110 +1,138 @@
-﻿<section class="page how-page">
-  <header class="page-title-block">
-    <div class="title-rule"></div>
+<div class="page">
+
+  <!-- Page header -->
+  <div class="page-head">
     <div>
-      <h1>How Margin Delver works</h1>
-      <p>A quick walkthrough of the data flow, the AI prompts, and the classification logic - written for restaurant owners, not engineers.</p>
+      <div class="page-title"><h1>How Margin Delver works</h1></div>
+      <div class="page-sub">
+        A quick walkthrough of the data flow, the AI prompts, and the
+        classification logic — written for restaurant owners, not engineers.
+      </div>
     </div>
-  </header>
+  </div>
 
-  <section class="panel flow-panel">
-    <header class="panel-head">
-      <h2>The data flow</h2>
-      <span>PoC v0.4 - two-week build window</span>
-    </header>
-
-    <div class="flow">
-      @for (step of steps; track step.num) {
-        <article class="flow-step" [class.ai-step]="step.ai">
-          <div class="flow-rail">
-            <div class="flow-icon">
-              <img [src]="'ds/icons/' + step.icon + '.svg'" alt="" />
+  <!-- Data flow -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-title">The data flow</div>
+      <div class="panel-head-right">
+        <span class="panel-meta">PoC v0.4 · two-week build window</span>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="flow">
+        @for (step of steps; track step.num) {
+          <div class="flow-step" [class.flow-step-ai]="step.ai">
+            <div class="flow-step-rail">
+              <div class="flow-step-icon">
+                @if (step.icon === 'sparkles-glyph') {
+                  <span style="font-size:18px;line-height:1">✦</span>
+                } @else {
+                  <img [src]="'ds/icons/' + step.icon + '.svg'" alt="" width="20" height="20" />
+                }
+              </div>
+            </div>
+            <div class="flow-step-content">
+              <div class="flow-step-meta">
+                <span class="flow-step-num">{{ step.num }}</span>
+                @if (step.ai) {
+                  <span class="flow-step-tag">AI step</span>
+                }
+              </div>
+              <div class="flow-step-title">{{ step.title }}</div>
+              <div class="flow-step-body">{{ step.body }}</div>
             </div>
           </div>
-          <div class="flow-content">
-            <div class="flow-meta">
-              <span class="flow-num">{{ step.num }}</span>
-              @if (step.ai) {
-                <span class="ai-badge">AI step</span>
-              }
+        }
+      </div>
+    </div>
+  </div>
+
+  <!-- 2×2 classification framework -->
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">The 2×2 classification framework</div>
+        <div class="panel-sub">
+          Thresholds are the median of <strong>your</strong> data — so the framework
+          self-calibrates regardless of menu size or volume.
+        </div>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="class-explain">
+        @for (card of classifications; track card.key) {
+          <div class="class-explain-card" [style.border-left-color]="card.color">
+            <div class="class-explain-head">
+              <span class="class-explain-glyph"
+                    [style.background]="card.bg"
+                    [style.color]="card.color">{{ card.glyph }}</span>
+              <div>
+                <div class="class-explain-title">{{ card.label }}</div>
+                <div class="class-explain-meta">{{ card.line }}</div>
+              </div>
             </div>
-            <h3>{{ step.title }}</h3>
-            <p>{{ step.body }}</p>
+            <div class="class-explain-body">{{ card.body }}</div>
           </div>
-        </article>
-      }
+        }
+      </div>
     </div>
-  </section>
+  </div>
 
-  <section class="panel class-panel">
-    <header class="class-head">
-      <h2>The 2x2 classification framework</h2>
-      <p>Thresholds are the median of your data - so the framework self-calibrates regardless of menu size or volume.</p>
-    </header>
-
-    <div class="class-grid">
-      @for (card of classifications; track card.key) {
-        <article class="class-card" [class]="card.key">
-          <div class="class-mark">{{ card.glyph }}</div>
-          <div>
-            <h3>{{ card.label }}</h3>
-            <p class="class-line">{{ card.line }}</p>
-            <p>{{ card.body }}</p>
-          </div>
-        </article>
-      }
+  <!-- What we ask Claude -->
+  <div class="panel">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">What we ask Claude</div>
+        <div class="panel-sub">Both prompts return strict JSON — no free-text parsing.</div>
+      </div>
     </div>
-  </section>
-
-  <section class="panel prompt-panel">
-    <header class="panel-head">
-      <h2>What we ask Claude</h2>
-      <span>Strict JSON, no free-form prose</span>
-    </header>
-
-    <div class="prompt-grid">
+    <div class="panel-body" style="display:flex;flex-direction:column;gap:20px">
       @for (prompt of prompts; track prompt.num) {
-        <article class="prompt-block">
+        <div class="prompt-block">
           <div class="prompt-head">
             <span class="prompt-num">{{ prompt.num }}</span>
             <div>
-              <h3>{{ prompt.title }}</h3>
-              <p>{{ prompt.description }}</p>
+              <div class="prompt-title">{{ prompt.title }}</div>
+              <div class="prompt-desc">{{ prompt.description }}</div>
             </div>
           </div>
-          <pre>{{ prompt.code }}</pre>
-        </article>
+          <pre class="prompt-code">{{ prompt.code }}</pre>
+        </div>
       }
     </div>
-  </section>
+  </div>
 
-  <section class="panel faq-panel">
-    <header class="panel-head">
-      <h2>Common owner questions</h2>
-      <span>Operational notes</span>
-    </header>
-
-    <div class="faq-list">
+  <!-- Frequently asked -->
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-title">Frequently asked</div>
+    </div>
+    <div>
       @for (faq of faqs; track faq.q; let i = $index) {
-        <article class="faq-item" [class.open]="openFaq() === i">
-          <button type="button" class="faq-question" (click)="toggleFaq(i)">
+        <div class="faq" [class.faq-open]="openFaq() === i">
+          <button type="button" class="faq-q" (click)="toggleFaq(i)">
             <span>{{ faq.q }}</span>
-            <img [src]="openFaq() === i ? 'ds/icons/chevron-up.svg' : 'ds/icons/chevron-down.svg'" alt="" />
+            <img [src]="openFaq() === i ? 'ds/icons/chevron-up.svg' : 'ds/icons/chevron-down.svg'"
+                 alt="" width="14" height="14" style="opacity:0.5;flex-shrink:0" />
           </button>
           @if (openFaq() === i) {
-            <p class="faq-answer">{{ faq.a }}</p>
+            <div class="faq-a">{{ faq.a }}</div>
           }
-        </article>
+        </div>
       }
     </div>
-  </section>
+  </div>
 
-  <section class="howto-cta">
+  <!-- CTA -->
+  <div class="howto-cta">
     <div>
-      <p class="eyebrow">READY WHEN YOU ARE</p>
-      <h2>Start with your menu - or load the demo warung.</h2>
+      <div class="howto-cta-eyebrow">Ready when you are</div>
+      <div class="howto-cta-title">Start with your menu — or load the demo warung.</div>
     </div>
-    <a routerLink="/menu" class="primary-link">Go to Menu & Margin</a>
-  </section>
-</section>
+    <a routerLink="/menu" class="btn btn-primary">
+      Go to Menu &amp; Margin <img src="ds/icons/arrow-right.svg" alt="" width="16" height="16" />
+    </a>
+  </div>
 
+</div>

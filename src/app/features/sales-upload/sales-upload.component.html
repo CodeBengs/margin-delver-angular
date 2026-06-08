@@ -1,215 +1,492 @@
-﻿<section class="page sales-page">
-  <header class="page-title-block">
-    <div class="title-rule"></div>
+<div class="page">
+
+  <!-- Page header -->
+  <div class="page-head">
     <div>
-      <h1>Sales Analysis</h1>
-      <p>Upload one calendar month of sales data to begin.</p>
+      <div class="page-title"><h1>Sales Analysis</h1></div>
+      <div class="page-sub">
+        @if (isLocked()) {
+          Match daily sales data against your menu to see what's actually moving — and why.
+        } @else if (uploadState() === 'results') {
+          {{ periodDays() }}-day performance, classified by margin × volume.
+        } @else {
+          Upload one calendar month of sales data to begin.
+        }
+      </div>
     </div>
-  </header>
-
-  <section class="menu-status" [class.locked]="isLocked()">
-    <div>
-      <img [src]="isLocked() ? 'ds/icons/lock-circle.svg' : 'ds/icons/check.svg'" alt="" />
-      <span>
-        Current menu: <strong>{{ readyItems().length }} items</strong>
-        <span class="dot-sep">·</span>
-        {{ isLocked() ? 'complete menu margins before sales analysis' : 'margins estimated' }}
-        <span class="dot-sep">·</span>
-        sales will be matched on name.
-      </span>
-    </div>
-    <a routerLink="/menu">Edit menu <img src="ds/icons/arrow-right.svg" alt="" /></a>
-  </section>
-
-  @if (message()) {
-    <div class="notice">{{ message() }}</div>
-  }
-
-  <section class="panel upload-panel">
-    <header class="panel-head">
-      <h2>Upload sales file</h2>
-      <button type="button" class="template-link">
-        <img src="ds/icons/download.svg" alt="" />
-        Download sales template
-      </button>
-    </header>
-
-    <div class="panel-body">
-      <label class="drop-zone" [class.disabled]="isLocked()" for="sales-file">
-        <input id="sales-file" type="file" accept=".xlsx,.xls" [disabled]="isLocked()" />
-        <span class="drop-icon"><img src="ds/icons/data.svg" alt="" /></span>
-        <strong>{{ salesLoaded() ? 'Sales workbook ready' : 'Drop your sales Excel file here' }}</strong>
-        <small>.xlsx or .xls · 1-31 day rows · column 1 = Date, remaining columns = menu item names</small>
-        <span class="drop-actions">
-          <span class="browse-button">Browse files</span>
-          <span>or</span>
-          <button type="button" [disabled]="isLocked()" (click)="$event.preventDefault(); uploadSampleSales()">Load demo 30-day sales</button>
-        </span>
-      </label>
-
-      @if (salesLoaded()) {
-        <div class="analysis-action">
-          <span>Sample workbook loaded and ready to analyse.</span>
-          <button type="button" class="primary" (click)="analyse()">Analyse sales</button>
-        </div>
+    <div class="page-actions">
+      @if (uploadState() === 'results') {
+        <button type="button" class="btn btn-ghost" (click)="exportFullReport()">
+          <img src="ds/icons/data-export.svg" alt="" width="16" height="16" /> Export full report
+        </button>
+        <button type="button" class="btn btn-ghost" (click)="resetAnalysis()">
+          <img src="ds/icons/refresh.svg" alt="" width="16" height="16" /> New upload
+        </button>
       }
+    </div>
+  </div>
 
-      <section class="expected-format">
-        <span class="eyebrow">Expected file format</span>
-        <div class="sample-table">
-          <table>
+  @if (isLocked()) {
+    <!-- Locked state — icon | text | button (3-column flex row, matching design) -->
+    <div class="locked-card">
+      <div class="locked-icon">
+        <img src="ds/icons/loading.svg" alt="" width="28" height="28" />
+      </div>
+      <div class="locked-text">
+        <div class="locked-title">Menu &amp; margins required first</div>
+        <div class="locked-body">
+          Sales analysis cross-references daily unit sales against per-item margin. Add your menu items
+          and estimate margins before uploading sales data.
+        </div>
+      </div>
+      <a routerLink="/menu" class="btn btn-primary">
+        Go to Menu &amp; Margin <img src="ds/icons/arrow-right.svg" alt="" width="16" height="16" />
+      </a>
+    </div>
+  } @else {
+
+    <!-- Context banner -->
+    <div class="context-banner">
+      <img src="ds/icons/check.svg" alt="" width="14" height="14" style="color:var(--color-success-500)" />
+      <span>Current menu: <strong>{{ readyItems().length }} items</strong> · margins estimated · sales will be matched on name.</span>
+      <a class="link" routerLink="/menu">Edit menu →</a>
+    </div>
+
+    @if (message()) {
+      <div class="notice">{{ message() }}</div>
+    }
+
+    @if (uploadState() === 'idle' || uploadState() === 'preview' || uploadState() === 'analyzing') {
+      <!-- Upload panel -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Upload sales file</div>
+          <div class="panel-head-right">
+            <a class="link" (click)="downloadTemplate()"><img src="ds/icons/download.svg" alt="" width="14" height="14" /> Download sales template</a>
+          </div>
+        </div>
+        <div class="panel-body">
+
+          @if (uploadState() === 'analyzing') {
+            <!-- Analyzing spinner -->
+            <div class="drop drop-busy">
+              <div class="drop-glyph drop-glyph-busy">
+                <img src="ds/icons/loading.svg" alt="" width="28" height="28" />
+              </div>
+              <div class="drop-title">Analyzing sales · matching to menu · generating suggestions…</div>
+              <div class="drop-sub">Claude is reviewing {{ periodDays() }} days of data against {{ readyItems().length }} menu items.</div>
+            </div>
+          } @else {
+            <!-- File drop zone (rich empty-state design) -->
+            <app-file-drop-zone
+              iconSrc="ds/icons/data.svg"
+              title="Drop your sales Excel file here"
+              description=".xlsx or .xls · 1–31 day rows · column 1 = Date, remaining columns = menu item names"
+              [maxSizeMb]="5"
+              (fileSelected)="onSalesFileSelected($event)"
+              (fileSizeError)="uploadError.set($event)">
+              <span drop-extra class="drop-or">or</span>
+              <a drop-extra class="link" (click)="$event.stopPropagation(); loadDemoSales()">Load demo 30-day sales</a>
+            </app-file-drop-zone>
+            @if (uploadError()) {
+              <p class="upload-error">{{ uploadError() }}</p>
+            }
+          }
+
+          <!-- Preview WITH errors: Import blocked panel -->
+          @if (uploadState() === 'preview' && hasUploadErrors()) {
+            <app-import-blocked
+              [fileName]="parsedSales()!.fileName"
+              [errorCount]="parsedSales()!.errors.length"
+              [rowsAffected]="salesRowsAffected()"
+              [totalRows]="parsedSales()!.rows.length"
+              rowsNoun="day rows"
+              previewTitle="Preview · Sales"
+              [categories]="salesCategories()"
+              [highlightedCount]="salesHighlightedCount()"
+              (cancel)="resetUpload()"
+              (reupload)="onReupload()">
+              <div class="ib-table-scroll">
+                <table class="ib-table">
+                  <thead>
+                    <tr>
+                      <th class="ib-col-num">#</th>
+                      <th>Date</th>
+                      @for (col of parsedSales()!.columns; track col.header) {
+                        <th [class.ib-col-head-bad]="!col.matched">
+                          {{ col.header }}
+                          @if (!col.matched && col.error) { <div class="ib-cell-msg">{{ col.error }}</div> }
+                        </th>
+                      }
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (row of parsedSales()!.rows; track row.rowIndex) {
+                      <tr [class.ib-row-bad]="row.dateError || objKeys(row.cellErrors).length">
+                        <td class="ib-col-num">{{ row.rowIndex }}</td>
+                        <td [class.ib-cell-bad]="row.dateError">
+                          <span [class.ib-bad-text]="row.dateError">{{ row.date || 'empty' }}</span>
+                          @if (row.dateError) { <div class="ib-cell-msg">{{ row.dateError }}</div> }
+                        </td>
+                        @for (col of parsedSales()!.columns; track col.header) {
+                          <td [class.ib-cell-bad]="salesCellError(row, col.header)">
+                            @if (salesCellError(row, col.header) && !salesCellDisplay(row, col.header)) {
+                              <span class="ib-empty">empty</span>
+                            } @else {
+                              <span [class.ib-bad-text]="salesCellError(row, col.header)">{{ salesCellDisplay(row, col.header) }}</span>
+                            }
+                            @if (salesCellError(row, col.header)) { <div class="ib-cell-msg">{{ salesCellError(row, col.header) }}</div> }
+                          </td>
+                        }
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </app-import-blocked>
+          }
+
+          <!-- Preview WITHOUT errors: clean preview + Confirm & Analyse -->
+          @if (uploadState() === 'preview' && !hasUploadErrors() && parsedSales()) {
+            <div class="upload-preview">
+
+              <p class="upload-notice">
+                Sales data loaded: {{ parsedSales()!.rows.length }} days,
+                {{ parsedSales()!.matchedCount }} menu item(s) matched.
+              </p>
+
+              <!-- Column matching badges -->
+              <div class="col-match-row">
+                @for (col of parsedSales()!.columns; track col.header) {
+                  <span class="col-badge"
+                        [class.col-badge-match]="col.matched"
+                        [class.col-badge-no-match]="!col.matched"
+                        [title]="col.matched ? 'Matched: ' + col.matchedName : 'Not found in your menu — will be ignored'">
+                    {{ col.header }}
+                  </span>
+                }
+              </div>
+              @for (col of parsedSales()!.columns; track col.header) {
+                @if (!col.matched) {
+                  <p class="col-warn">Column "{{ col.header }}" does not match any known menu item. It will be ignored.</p>
+                }
+              }
+
+              <!-- Preview table -->
+              <div class="preview-table-wrap">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      @for (col of parsedSales()!.columns; track col.header) {
+                        @if (col.matched) {
+                          <th>{{ col.header }}</th>
+                        }
+                      }
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (row of previewRows(); track row.rowIndex) {
+                      <tr [class.row-error]="rowHasErrors(row)">
+                        <td>{{ row.date }}</td>
+                        @for (col of parsedSales()!.columns; track col.header) {
+                          @if (col.matched) {
+                            <td [class.cell-error-highlight]="hasCellError(row, col.header)">
+                              {{ row.quantities[col.header] || 0 }}
+                            </td>
+                          }
+                        }
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+                @if (parsedSales()!.rows.length > 5) {
+                  <button type="button" class="link-button" (click)="showAllRows.set(!showAllRows())">
+                    {{ showAllRows() ? 'Show less' : 'Show all ' + parsedSales()!.rows.length + ' rows' }}
+                  </button>
+                }
+              </div>
+
+              <!-- Actions -->
+              <div class="preview-actions">
+                <button type="button" class="btn btn-primary"
+                        [disabled]="!canAnalyse()"
+                        (click)="confirmAndAnalyse()">
+                  <span style="font-size:14px">✦</span>
+                  Confirm &amp; Analyse
+                </button>
+                <button type="button" class="btn btn-ghost" (click)="resetUpload()">Cancel</button>
+              </div>
+
+            </div>
+          }
+
+          @if (uploadState() === 'idle') {
+            <!-- Expected file format hint -->
+            <div class="sales-preview">
+              <div class="sales-preview-label">Expected file format</div>
+              <table class="sales-preview-table">
+                <thead>
+                  <tr>
+                    <th>Date</th><th>Nasi Goreng</th><th>Mie Ayam Bakso</th><th>Es Teh Manis</th><th>…</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td>01/05/2026</td><td>14</td><td>12</td><td>19</td><td>…</td></tr>
+                  <tr><td>02/05/2026</td><td>11</td><td>15</td><td>22</td><td>…</td></tr>
+                  <tr><td>03/05/2026</td><td>16</td><td>10</td><td>18</td><td>…</td></tr>
+                  <tr class="sales-preview-fade"><td colspan="5">… up to 31 day rows …</td></tr>
+                </tbody>
+              </table>
+            </div>
+          }
+
+        </div>
+      </div>
+
+    } @else if (uploadState() === 'results') {
+      @if (analysisResult(); as analysis) {
+
+        <!-- AC8.5: Excluded items notice -->
+        @if (excludedItemCount() > 0) {
+          <div class="notice notice-warning">
+            {{ excludedItemCount() }} item(s) excluded from totals due to incomplete cost data.
+          </div>
+        }
+
+        <!-- Verdict card -->
+        <div class="verdict-card" [ngClass]="'verdict-' + analysis.summary.verdict">
+          <div class="verdict-left">
+            <div class="verdict-badge" [ngClass]="'verdict-badge-' + analysis.summary.verdict">
+              <span class="verdict-dot"></span>
+              {{ analysis.summary.verdict === 'break_even' ? 'Break even' : (analysis.summary.verdict | titlecase) }}
+            </div>
+            <div class="verdict-headline">{{ verdictHeadline(analysis.summary.verdict) }}</div>
+            <div class="verdict-body">
+              Over the last {{ periodDays() }} days, {{ totalUnits() | number }} units sold across {{ readyItems().length }} items produced
+              <strong>{{ fmtIDR(analysis.summary.total_revenue_idr) }}</strong> in revenue against
+              <strong>{{ fmtIDR(analysis.summary.total_cost_idr) }}</strong> in estimated ingredient cost.
+              Overall gross margin: <strong>{{ analysis.summary.overall_margin_pct | number:'1.0-1' }}%</strong>.
+            </div>
+          </div>
+          <div class="verdict-stats">
+            <div class="verdict-stat">
+              <div class="verdict-stat-label">Revenue</div>
+              <div class="verdict-stat-num">{{ fmtIDR(analysis.summary.total_revenue_idr) }}</div>
+            </div>
+            <div class="verdict-stat">
+              <div class="verdict-stat-label">Ingredient cost</div>
+              <div class="verdict-stat-num">{{ fmtIDR(analysis.summary.total_cost_idr) }}</div>
+              <div class="verdict-stat-sub">Estimated</div>
+            </div>
+            <div class="verdict-stat">
+              <div class="verdict-stat-label">Gross profit</div>
+              <div class="verdict-stat-num verdict-stat-num-accent">{{ fmtIDR(analysis.summary.total_gross_profit_idr) }}</div>
+            </div>
+            <div class="verdict-stat">
+              <div class="verdict-stat-label">Period</div>
+              <div class="verdict-stat-num">{{ periodDays() }} days</div>
+              <div class="verdict-stat-sub">{{ totalUnits() | number }} units</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Classification strip -->
+        <div class="class-strip">
+          @for (k of classifications; track k) {
+            <div class="class-chip" [style.--accent]="classColor(k)"
+                 [style.border-left-color]="classColor(k)">
+              <div class="class-chip-glyph"
+                   [style.color]="classColor(k)"
+                   [style.background]="classBg(k)">{{ classGlyph(k) }}</div>
+              <div class="class-chip-text">
+                <div class="class-chip-label">{{ classLabel(k) }}</div>
+                <div class="class-chip-meta">{{ classLine(k) }}</div>
+              </div>
+              <div class="class-chip-count">{{ classificationCounts()[k] }}</div>
+            </div>
+          }
+        </div>
+
+        <!-- Suggestions panel -->
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-title">AI suggestions</div>
+              <div class="panel-sub">Up to 5 prioritised moves, generated from your margin × sales data.</div>
+            </div>
+            <div class="panel-head-right">
+              <span class="panel-meta">{{ analysis.suggestions.length }} suggestions · ranked by impact</span>
+            </div>
+          </div>
+          <div class="suggestions">
+            @if (allStar() && analysis.suggestions.length === 0) {
+              <div class="notice">Your menu is performing well across the board. No priority actions at this time.</div>
+            }
+            @for (sug of analysis.suggestions; track sug.title; let i = $index) {
+              @if (!isDismissed(i)) {
+                <div class="sug-card" [class.sug-expanded]="isExpanded(i)">
+                  <div class="sug-head" (click)="toggleSuggestion(i)">
+                    <div class="sug-type" [ngClass]="'sug-type-' + sugTone(sug.suggestion_type)">
+                      <span class="sug-num">{{ (i + 1).toString().padStart(2, '0') }}</span>
+                      {{ sugLabel(sug.suggestion_type) }}
+                    </div>
+                    <div class="sug-title">{{ sug.title }}</div>
+                    <div class="sug-impact">{{ sug.estimated_impact }}</div>
+                    <img [src]="isExpanded(i) ? 'ds/icons/chevron-up.svg' : 'ds/icons/chevron-down.svg'" alt="" width="14" height="14" style="opacity:0.5" />
+                  </div>
+                  @if (isExpanded(i)) {
+                    <div class="sug-body">
+                      <p>{{ sug.description }}</p>
+                      <div class="sug-items">
+                        <span class="sug-items-label">Items involved</span>
+                        @for (it of sug.items_involved; track it) {
+                          <span class="sug-item-chip">{{ it }}</span>
+                        }
+                      </div>
+                      <div class="sug-actions">
+                        <button type="button" class="link-button" (click)="dismissSuggestion(i)">
+                          <img src="ds/icons/check.svg" alt="" width="12" height="12" /> Understood — dismiss
+                        </button>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            }
+          </div>
+          @if (dismissedIds().length > 0) {
+            <div class="dismissed-foot">
+              <a class="link" (click)="showDismissed()">
+                Show {{ dismissedIds().length }} dismissed suggestion{{ dismissedIds().length === 1 ? '' : 's' }}
+              </a>
+            </div>
+          }
+        </div>
+
+        <!-- Matrix + RevCost grid -->
+        <div class="analysis-grid">
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title">Margin × Volume matrix</div>
+              <div class="panel-head-right">
+                <span class="panel-meta">Thresholds: median of your data</span>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="matrix">
+                <div class="matrix-canvas">
+                  <div class="matrix-q matrix-q-tl">Niche</div>
+                  <div class="matrix-q matrix-q-tr">Star</div>
+                  <div class="matrix-q matrix-q-bl">Deadweight</div>
+                  <div class="matrix-q matrix-q-br">Workhorse</div>
+                  <div class="matrix-cross-v"></div>
+                  <div class="matrix-cross-h"></div>
+                  <div class="matrix-axis-y">Gross margin →</div>
+                  <div class="matrix-axis-x">Units sold →</div>
+                  @for (dot of matrixDots(); track dot.name) {
+                    <div class="matrix-dot"
+                         [style.left.%]="dot.left"
+                         [style.top.%]="dot.top"
+                         [style.background]="dot.color"
+                         [title]="dot.name">
+                      <span class="matrix-dot-label">{{ dot.name.split(' ').slice(0, 2).join(' ') }}</span>
+                    </div>
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-head">
+              <div class="panel-title">Revenue vs ingredient cost</div>
+              <div class="panel-head-right">
+                <span class="panel-meta">By contribution, descending</span>
+              </div>
+            </div>
+            <div class="panel-body">
+              <div class="revcost">
+                @for (row of revcostRows(); track row.name) {
+                  <div class="revcost-row">
+                    <div class="revcost-label">{{ row.name }}</div>
+                    <div class="revcost-bars">
+                      <div class="revcost-bar-row">
+                        <div class="revcost-track">
+                          <div class="revcost-bar revcost-bar-rev" [style.width.%]="row.widthRevPct"></div>
+                        </div>
+                        <span class="revcost-bar-num">{{ fmtIDR(row.revenue) }}</span>
+                      </div>
+                      <div class="revcost-bar-row">
+                        <div class="revcost-track">
+                          <div class="revcost-bar revcost-bar-cost" [style.width.%]="row.widthCostPct"></div>
+                        </div>
+                        <span class="revcost-bar-num revcost-bar-num-muted">{{ fmtIDR(row.cost) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                }
+                <div class="revcost-legend">
+                  <span class="revcost-legend-item"><span class="revcost-swatch revcost-swatch-rev"></span> Revenue</span>
+                  <span class="revcost-legend-item"><span class="revcost-swatch revcost-swatch-cost"></span> Ingredient cost</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Per-item performance table -->
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title">Per-item performance</div>
+            <div class="panel-head-right">
+              <span class="panel-meta">Sorted by contribution</span>
+            </div>
+          </div>
+          <table class="data-table">
             <thead>
               <tr>
-                <th>Date</th>
-                <th>Nasi Goreng</th>
-                <th>Mie Ayam Bakso</th>
-                <th>Es Teh Manis</th>
-                <th>...</th>
+                <th>Menu item</th>
+                <th class="num-col">Units sold</th>
+                <th class="num-col">Revenue</th>
+                <th class="num-col">Est. cost</th>
+                <th class="num-col">Contribution</th>
+                <th class="num-col" style="width:100px">Margin %</th>
+                <th style="width:150px">Classification</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td>01/05/2026</td>
-                <td>14</td>
-                <td>12</td>
-                <td>19</td>
-                <td>...</td>
-              </tr>
-              <tr>
-                <td>02/05/2026</td>
-                <td>11</td>
-                <td>15</td>
-                <td>22</td>
-                <td>...</td>
-              </tr>
-              <tr>
-                <td>03/05/2026</td>
-                <td>16</td>
-                <td>10</td>
-                <td>18</td>
-                <td>...</td>
-              </tr>
+              @for (item of sortedItems(); track item.menu_item) {
+                <tr>
+                  <td>
+                    <div class="cell-name">
+                      <div class="item-thumb" [ngClass]="'thumb-' + iconForName(item.menu_item)">
+                        <img [src]="'ds/icons/' + iconForName(item.menu_item) + '.svg'" alt="" width="18" height="18" />
+                      </div>
+                      <div class="cell-name-text">{{ item.menu_item }}</div>
+                    </div>
+                  </td>
+                  <td class="num-col num">{{ item.units_sold | number }}</td>
+                  <td class="num-col num">{{ fmtIDR(item.revenue_idr) }}</td>
+                  <td class="num-col num">{{ fmtIDR(item.est_cost_idr) }}</td>
+                  <td class="num-col num"><strong>{{ fmtIDR(item.contribution_idr) }}</strong></td>
+                  <td class="num-col num"><span [ngClass]="item.margin_pct >= 60 ? 'pct-good' : item.margin_pct >= 30 ? 'pct-ok' : item.margin_pct >= 0 ? 'pct-warn' : 'pct-bad'">{{ item.margin_pct | number:'1.0-1' }}%</span></td>
+                  <td>
+                    <span class="class-pill"
+                          [style.color]="classColor(item.classification)"
+                          [style.background]="classBg(item.classification)">
+                      <span style="font-weight:700">{{ classGlyph(item.classification) }}</span> {{ classLabel(item.classification) }}
+                    </span>
+                  </td>
+                </tr>
+              }
             </tbody>
           </table>
-          <p>... up to 31 day rows ...</p>
         </div>
-      </section>
-    </div>
-  </section>
 
-  @if (isLocked()) {
-    <section class="locked-state">
-      <strong>Sales analysis is locked</strong>
-      <p>Set at least one menu item to ready in Menu & Margin. Ingredient costs must be complete before sales totals are trusted.</p>
-      <a routerLink="/menu" class="primary">Open menu workspace</a>
-    </section>
+      }
+    }
+
   }
 
-  @if (analysisResult(); as analysis) {
-    <section class="verdict-card" [ngClass]="analysis.summary.verdict">
-      <div>
-        <span class="eyebrow">Verdict</span>
-        <h3>{{ analysis.summary.verdict.replace('_', ' ') | titlecase }}</h3>
-        <p>{{ analysis.summary.verdict_summary }}</p>
-      </div>
-      <strong>{{ analysis.summary.overall_margin_pct | number:'1.0-1' }}%</strong>
-    </section>
-
-    <section class="stats-grid">
-      <article>
-        <span>Revenue</span>
-        <strong>{{ fmtIDR(analysis.summary.total_revenue_idr) }}</strong>
-      </article>
-      <article>
-        <span>Ingredient cost</span>
-        <strong>{{ fmtIDR(analysis.summary.total_cost_idr) }}</strong>
-      </article>
-      <article>
-        <span>Gross profit</span>
-        <strong>{{ fmtIDR(analysis.summary.total_gross_profit_idr) }}</strong>
-      </article>
-      <article>
-        <span>Period</span>
-        <strong>30 days</strong>
-      </article>
-    </section>
-
-    <section class="classification-strip">
-      <article class="star"><span>Star</span><strong>{{ classificationCounts().star }}</strong></article>
-      <article class="workhorse"><span>Workhorse</span><strong>{{ classificationCounts().workhorse }}</strong></article>
-      <article class="niche"><span>Niche</span><strong>{{ classificationCounts().niche }}</strong></article>
-      <article class="deadweight"><span>Deadweight</span><strong>{{ classificationCounts().deadweight }}</strong></article>
-    </section>
-
-    <section class="analysis-grid">
-      <article class="panel suggestions-panel">
-        <div class="section-head">
-          <div>
-            <span class="eyebrow">AI suggestions</span>
-            <h3>Operational moves</h3>
-          </div>
-        </div>
-        <div class="suggestion-list">
-          @for (suggestion of analysis.suggestions; track suggestion.title) {
-            <article class="suggestion-card">
-              <span>{{ suggestion.suggestion_type }}</span>
-              <h4>{{ suggestion.title }}</h4>
-              <p>{{ suggestion.description }}</p>
-              <small>{{ suggestion.estimated_impact }}</small>
-            </article>
-          } @empty {
-            <div class="empty-state">All analysed items look healthy for this sample.</div>
-          }
-        </div>
-      </article>
-
-      <article class="panel matrix-panel">
-        <span class="eyebrow">Margin x volume</span>
-        <div class="matrix">
-          @for (item of analysis.items; track trackByName($index, item)) {
-            <span [ngClass]="item.classification" [style.left.%]="item.margin_pct" [style.bottom.%]="item.units_sold / 5">
-              {{ item.menu_item.slice(0, 2).toUpperCase() }}
-            </span>
-          }
-        </div>
-      </article>
-    </section>
-
-    <section class="panel performance-panel">
-      <div class="section-head">
-        <div>
-          <span class="eyebrow">Per item performance</span>
-          <h3>Revenue, cost, and contribution</h3>
-        </div>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Menu item</th>
-              <th>Units</th>
-              <th>Revenue</th>
-              <th>Cost</th>
-              <th>Contribution</th>
-              <th>Margin</th>
-              <th>Class</th>
-            </tr>
-          </thead>
-          <tbody>
-            @for (item of analysis.items; track trackByName($index, item)) {
-              <tr>
-                <td><strong>{{ item.menu_item }}</strong></td>
-                <td>{{ item.units_sold | number }}</td>
-                <td>{{ fmtIDR(item.revenue_idr) }}</td>
-                <td>{{ fmtIDR(item.est_cost_idr) }}</td>
-                <td>{{ fmtIDR(item.contribution_idr) }}</td>
-                <td>{{ item.margin_pct | number:'1.0-1' }}%</td>
-                <td><span class="class-pill" [ngClass]="item.classification">{{ item.classification }}</span></td>
-              </tr>
-            }
-          </tbody>
-        </table>
-      </div>
-    </section>
-  }
-</section>
+</div>

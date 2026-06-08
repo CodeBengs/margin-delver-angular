@@ -1,13 +1,17 @@
-<label
-  class="drop-zone"
-  [class.dragging]="isDragging"
-  (dragover)="onDragOver($event)"
-  (dragleave)="onDragLeave()"
-  (drop)="onDrop($event)"
->
-  <input class="sr-only" type="file" [accept]="accept" (change)="onFileChange($event)" />
-  <span class="icon" aria-hidden="true">Upload</span>
-  <strong>{{ title }}</strong>
-  <span>{{ description }}</span>
-</label>
-
+<div class="drop" [class.drop-over]="isDragging"
+     (click)="openPicker()"
+     (dragover)="onDragOver($event)" (dragleave)="onDragLeave()" (drop)="onDrop($event)">
+  <input #fileInput class="sr-only" type="file" [accept]="accept" (change)="onFileChange($event)" />
+  <div class="drop-glyph"><img [src]="iconSrc" alt="" width="28" height="28" /></div>
+  <div class="drop-title">{{ title }}</div>
+  <div class="drop-sub">{{ description }}</div>
+  <div class="drop-cta">
+    <button type="button" class="btn btn-secondary" (click)="$event.stopPropagation(); openPicker()">
+      <img src="ds/icons/upload.svg" alt="" width="14" height="14" /> Browse files
+    </button>
+    <ng-content select="[drop-extra]"></ng-content>
+  </div>
+</div>
+@if (sizeError()) {
+  <p class="drop-error">{{ sizeError() }}</p>
+}

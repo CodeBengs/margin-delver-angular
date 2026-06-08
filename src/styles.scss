@@ -408,6 +408,90 @@ p {
   border: 0;
 }
 
+/* ===== Promoted globals for projected / cross-component content ===== */
+.btn-secondary {
+  background: #fff;
+  color: var(--brand-primary, #eb7300);
+  border-color: var(--color-orange-200, #ffc680);
+}
+.btn-secondary img { filter: invert(43%) sepia(89%) saturate(1985%) hue-rotate(15deg) brightness(95%) contrast(101%); }
+.btn-secondary:hover { background: var(--color-orange-50, #fff4e5); }
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-orange-700, #8e4600);
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+}
+.link:hover { color: var(--color-orange-600, #c05f00); }
+
+.drop-or { font-size: 13px; color: var(--fg-muted, #666); }
+
+/* ===== IMPORT-BLOCKED TABLE (projected into app-import-blocked; used by menu + sales) ===== */
+.ib-table-scroll {
+  max-height: 360px;
+  overflow: auto;
+  border-radius: var(--radius-md, 8px);
+}
+.ib-table {
+  width: 100%;
+  border-collapse: collapse;
+  border: 1px solid var(--border-subtle, #eee);
+  border-radius: var(--radius-md, 8px);
+  overflow: hidden;
+  font-size: 12.5px;
+}
+.ib-table th {
+  text-align: left;
+  font: var(--fw-semibold, 600) var(--fs-size-12, 12px)/1 var(--font-sans, Inter, sans-serif);
+  color: var(--fg-muted, #666);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: var(--space-3, 8px) var(--space-4, 12px);
+  background: var(--color-grey-50, #fafafa);
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border-default, #e0e0df);
+  vertical-align: top;
+}
+.ib-table td {
+  padding: var(--space-3, 8px) var(--space-4, 12px);
+  color: var(--fg-default, #333);
+  border-bottom: 1px solid var(--border-subtle, #eee);
+  vertical-align: top;
+}
+.ib-table tr:last-child td { border-bottom: none; }
+.ib-col-num {
+  width: 48px;
+  color: var(--fg-muted, #888);
+  white-space: nowrap;
+}
+.ib-cell-bad {
+  background: var(--color-danger-50, #FFE5E5);
+  box-shadow: inset 0 0 0 1px var(--color-danger-300, #FF6B6B);
+}
+.ib-col-head-bad {
+  background: var(--color-danger-50, #FFE5E5);
+  color: var(--color-danger-700, #B30000);
+  box-shadow: inset 0 0 0 1px var(--color-danger-300, #FF6B6B);
+  text-transform: none;
+  letter-spacing: 0;
+  white-space: normal;
+}
+.ib-bad-text { color: var(--color-danger-700, #B30000); }
+.ib-empty {
+  color: var(--fg-muted, #999);
+  font-style: italic;
+}
+.ib-cell-msg {
+  margin-top: var(--space-2, 4px);
+  font-size: var(--fs-size-12, 12px);
+  color: var(--color-danger-700, #B30000);
+  white-space: normal;
+}
+
 
 
 

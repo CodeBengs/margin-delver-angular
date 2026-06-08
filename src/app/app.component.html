@@ -39,7 +39,9 @@
     <div class="session-card">
       <strong><span class="session-dot"></span> Session active</strong>
       <p>Data lives in your browser only. Refresh resets the workspace.</p>
-      <button type="button" (click)="resetSession()">Reset session</button>
+      @if (hasData()) {
+        <button type="button" (click)="resetSession()">Reset session</button>
+      }
     </div>
   </aside>
 
@@ -51,8 +53,14 @@
         <strong>{{ breadcrumb() }}</strong>
       </nav>
       <div class="topbar-spacer"></div>
-      <a routerLink="/menu" class="btn btn-ghost">Menu</a>
-      <a routerLink="/sales-upload" class="btn btn-primary">Analyse sales</a>
+      @if (!hasMenu()) {
+        <button type="button" class="ghost-link" (click)="loadDemo()">
+          <span class="sparkle">✦</span> Load demo data
+        </button>
+      }
+      <button type="button" class="icon-btn" title="Refresh" (click)="resetSession()">
+        <img src="ds/icons/refresh.svg" alt="Refresh" width="16" height="16" />
+      </button>
     </header>
 
     <main class="page-scroll">

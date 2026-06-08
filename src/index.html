@@ -7,6 +7,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="icon" type="image/png" href="assets/margin-delver-icon.png">
   <link rel="apple-touch-icon" href="assets/margin-delver-icon.png">
+  <script>
+    (function () {
+      var redirect = sessionStorage.getItem('ghpages_redirect');
+      if (redirect) {
+        sessionStorage.removeItem('ghpages_redirect');
+        var url = new URL(redirect);
+        history.replaceState(null, null, url.pathname + url.search + url.hash);
+      }
+    })();
+  </script>
 </head>
 <body>
   <app-root></app-root>

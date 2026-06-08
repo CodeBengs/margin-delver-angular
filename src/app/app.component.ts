@@ -2,6 +2,11 @@
 import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { filter } from 'rxjs';
 
+import { DEMO_MENU } from './core/demo-data';
+
+const MENU_KEY = 'md_angular_menu_v1';
+const SALES_KEY = 'md_angular_sales_v1';
+
 @Component({
   selector: 'app-root',
   standalone: true,
@@ -11,6 +16,29 @@ import { filter } from 'rxjs';
 })
 export class AppComponent {
   private readonly currentUrl = signal('/');
+  private readonly _lsRevision = signal(0);
+
+  readonly hasData = computed(() => {
+    this._lsRevision();
+    try {
+      const menuItems = JSON.parse(localStorage.getItem(MENU_KEY) ?? 'null') ?? [];
+      const salesData = JSON.parse(localStorage.getItem(SALES_KEY) ?? 'null') ?? {};
+      return (Array.isArray(menuItems) && menuItems.length > 0) ||
+             (typeof salesData === 'object' && salesData !== null && Object.keys(salesData).length > 0);
+    } catch {
+      return false;
+    }
+  });
+
+  readonly hasMenu = computed(() => {
+    this._lsRevision();
+    try {
+      const items = JSON.parse(localStorage.getItem(MENU_KEY) ?? 'null') ?? [];
+      return Array.isArray(items) && items.length > 0;
+    } catch {
+      return false;
+    }
+  });
 
   readonly breadcrumb = computed(() => {
     const url = this.currentUrl();
@@ -22,16 +50,26 @@ export class AppComponent {
   });
 
   resetSession(): void {
-    localStorage.removeItem('md_angular_menu_v1');
-    localStorage.removeItem('md_angular_sales_v1');
+    localStorage.removeItem(MENU_KEY);
+    localStorage.removeItem(SALES_KEY);
     window.location.reload();
   }
 
-  constructor(router: Router) {
+  loadDemo(): void {
+    try {
+      localStorage.setItem(MENU_KEY, JSON.stringify(DEMO_MENU));
+    } catch { /* ignore */ }
+    // _lsRevision is updated by the constructor listener when this event fires
+    window.dispatchEvent(new CustomEvent('md:load-demo'));
+  }
+
+  constructor(private readonly router: Router) {
     this.currentUrl.set(router.url);
     router.events.pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd)).subscribe((event) => {
       this.currentUrl.set(event.urlAfterRedirects);
     });
+    // Re-evaluate hasMenu/hasData whenever any component signals data changed
+    window.addEventListener('md:load-demo', () => this._lsRevision.update((n) => n + 1));
   }
 }
 

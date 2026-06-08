@@ -1,4 +1,4 @@
-﻿import { CommonModule } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { Component, computed, signal } from '@angular/core';
 
 const CLAUDE_KEY = 'md_claude_api_key_v1';
@@ -12,22 +12,25 @@ const CLAUDE_MODEL = 'md_claude_model_v1';
   styleUrl: './settings.component.scss'
 })
 export class SettingsComponent {
-  readonly apiKey = signal(localStorage.getItem(CLAUDE_KEY) || '');
-  readonly model = signal(localStorage.getItem(CLAUDE_MODEL) || 'claude-3-5-sonnet-latest');
+  readonly savedApiKey = signal(localStorage.getItem(CLAUDE_KEY) || '');
+  readonly draftKey = signal(localStorage.getItem(CLAUDE_KEY) || '');
+  readonly model = signal(localStorage.getItem(CLAUDE_MODEL) || 'claude-sonnet-4-6');
   readonly showKey = signal(false);
-  readonly saved = signal(false);
+  readonly savedFlash = signal(false);
 
-  readonly connected = computed(() => this.apiKey().startsWith('sk-ant-'));
-  readonly maskedKey = computed(() => {
-    const key = this.apiKey();
+  readonly connected = computed(() => !!this.savedApiKey());
+  readonly keyLooksValid = computed(() => /^sk-ant-[A-Za-z0-9_-]{10,}$/.test(this.draftKey().trim()));
+  readonly keyDirty = computed(() => this.draftKey().trim() !== this.savedApiKey());
+  readonly canSave = computed(() => this.keyDirty() && this.draftKey().trim() !== '');
+
+  readonly maskedPreview = computed(() => {
+    const key = this.savedApiKey();
     if (!key) return '';
-    if (this.showKey()) return key;
-    return key.length > 12 ? `${key.slice(0, 11)}...` : key;
+    return key.slice(0, 7) + '…' + key.slice(-4);
   });
 
-  updateApiKey(value: string): void {
-    this.apiKey.set(value.trim());
-    this.saved.set(false);
+  updateDraftKey(value: string): void {
+    this.draftKey.set(value);
   }
 
   updateModel(value: string): void {
@@ -40,14 +43,17 @@ export class SettingsComponent {
   }
 
   saveKey(): void {
-    localStorage.setItem(CLAUDE_KEY, this.apiKey());
+    const trimmed = this.draftKey().trim();
+    this.savedApiKey.set(trimmed);
+    localStorage.setItem(CLAUDE_KEY, trimmed);
     localStorage.setItem(CLAUDE_MODEL, this.model());
-    this.saved.set(true);
+    this.savedFlash.set(true);
+    setTimeout(() => this.savedFlash.set(false), 2000);
   }
 
-  clearKey(): void {
-    this.apiKey.set('');
+  removeKey(): void {
+    this.draftKey.set('');
+    this.savedApiKey.set('');
     localStorage.removeItem(CLAUDE_KEY);
-    this.saved.set(false);
   }
 }

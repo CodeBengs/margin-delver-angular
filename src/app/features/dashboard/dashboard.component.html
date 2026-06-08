@@ -1,80 +1,198 @@
 <div class="page dashboard-page">
+
+  <!-- Hero -->
   <section class="dash-hero">
     <div class="dash-hero-text">
-      <div class="dash-eyebrow"><span></span> Margin Delver</div>
-      <h1>From menu list to margin clarity <em>in minutes.</em></h1>
-      <p>
-        Upload your menu, let the AI estimate ingredient costs and gross margin, then upload daily sales to see which dishes carry the kitchen and which ones quietly bleed it.
+      <div class="dash-eyebrow"><span class="dash-eyebrow-dot"></span> Margin Delver</div>
+      <h1 class="dash-title">
+        From menu list to margin clarity
+        <span class="dash-title-accent">in minutes.</span>
+      </h1>
+      <p class="dash-lede">
+        Upload your menu, let the AI estimate ingredient costs and gross margin,
+        then upload daily sales to see which dishes carry the kitchen — and which
+        ones quietly bleed it.
       </p>
-      <div class="dash-actions">
-        <a routerLink="/menu" class="btn btn-primary">Continue to menu & margins</a>
-        <button type="button" class="btn btn-ghost" (click)="resetSession()">Reset session</button>
+      <div class="dash-hero-actions">
+        @if (!hasMenu()) {
+          <a routerLink="/menu" class="btn btn-primary">
+            <img src="ds/icons/plus.svg" alt="" width="16" height="16" />
+            Start with my menu
+          </a>
+          <button type="button" class="btn btn-ghost" (click)="loadDemo()">
+            <span class="sparkle">✦</span> Load demo warung
+          </button>
+        } @else {
+          <button type="button" class="btn btn-primary" (click)="hasSales() ? goToAnalysis() : goToMenu()">
+            <img src="ds/icons/arrow-right.svg" alt="" width="16" height="16" />
+            {{ hasSales() ? 'Open analysis' : 'Continue to menu & margins' }}
+          </button>
+          <button type="button" class="btn btn-ghost" (click)="resetSession()">Reset session</button>
+        }
       </div>
     </div>
     <div class="dash-hero-art">
-      <img src="assets/margin-delver-icon.png" alt="" />
+      <div class="dash-hero-art-bg"></div>
+      <img src="assets/margin-delver-icon.png" alt="" class="dash-hero-piggy" />
     </div>
   </section>
 
-  <section class="kpi-grid">
-    <article class="kpi-card">
-      <div class="kpi-head"><img src="ds/icons/list.svg" alt="" /><span>Menu items</span></div>
-      <strong>{{ menuItems().length || 10 }}</strong>
-      <p>{{ readyCount() || 10 }} ready � {{ menuItems().length ? menuItems().length - readyCount() : 0 }} pending</p>
-    </article>
-    <article class="kpi-card">
-      <div class="kpi-head green"><img src="ds/icons/target.svg" alt="" /><span>Avg gross margin</span></div>
-      <strong>{{ hasMenu() ? fmtPct(avgMargin()) : '53.2%' }}</strong>
-      <p>Across {{ menuItems().length || 10 }} items</p>
-    </article>
-    <article class="kpi-card">
-      <div class="kpi-head blue"><img src="ds/icons/money.svg" alt="" /><span>Revenue tracked</span></div>
-      <strong>�</strong>
-      <p>Upload sales to track</p>
-    </article>
-    <article class="kpi-card">
-      <div class="kpi-head purple"><img src="ds/icons/uptrend.svg" alt="" /><span>Gross profit</span></div>
-      <strong>�</strong>
-      <p>Awaiting sales data</p>
-    </article>
-  </section>
+  <!-- Empty state: How it works steps -->
+  @if (!hasMenu()) {
+    <section class="dash-steps">
+      <div class="section-head-block">
+        <div class="pj-rule"></div>
+        <div>
+          <div class="section-title">How it works</div>
+          <div class="section-sub">Three steps. No accounting knowledge required.</div>
+        </div>
+      </div>
+      <div class="steps-grid">
+        <div class="step-card">
+          <div class="step-num">01</div>
+          <div class="step-icon-wrap"><img src="ds/icons/list.svg" alt="" width="22" height="22" /></div>
+          <div class="step-title">Add your menu</div>
+          <div class="step-body">Drag in an Excel file or type items by hand. Margin Delver accepts the messy reality of Indonesian menu naming — Nasi Goreng Spesial, Mie Ayam Ceker, whatever you call it.</div>
+          <div class="step-foot"><a routerLink="/menu" class="step-cta">Open menu & margin →</a></div>
+        </div>
+        <div class="step-card">
+          <div class="step-num">02</div>
+          <div class="step-icon-wrap"><img src="ds/icons/chart-bar-v.svg" alt="" width="22" height="22" /></div>
+          <div class="step-title">Get margin estimates</div>
+          <div class="step-body">Claude returns a standard recipe for each dish. We price each ingredient against our IDR reference list and compute gross margin per item — editable if your costs differ.</div>
+          <div class="step-foot"><span class="step-meta">~30s for 20 items</span></div>
+        </div>
+        <div class="step-card">
+          <div class="step-num">03</div>
+          <div class="step-icon-wrap"><img src="ds/icons/data.svg" alt="" width="22" height="22" /></div>
+          <div class="step-title">Upload sales for analysis</div>
+          <div class="step-body">Drop in one calendar month of POS data. We classify every item as Star, Workhorse, Niche, or Deadweight — and the AI suggests up to five concrete moves to lift profit.</div>
+          <div class="step-foot"><a routerLink="/sales-upload" class="step-cta">Open analysis →</a></div>
+        </div>
+      </div>
+    </section>
 
-  <section class="dashboard-lower">
-    <article class="panel workspace-panel">
-      <div class="panel-head">
-        <h2>Your workspace</h2>
+    <div class="dash-tips">
+      <div class="tip-card">
+        <div class="tip-glyph tip-glyph-id">id</div>
+        <div>
+          <div class="tip-title">Bahasa Indonesia first</div>
+          <div class="tip-body">Recipes return ingredient names in Indonesian. Soto Babat, Es Cendol, Nasi Campur Bali — they're recognised, not rejected.</div>
+        </div>
       </div>
-      <div class="workspace-cards">
-        <a routerLink="/menu" class="workspace-card">
-          <img src="ds/icons/list.svg" alt="" />
-          <div>
-            <strong>Menu & Margin</strong>
-            <p>{{ menuItems().length || 0 }} items, ready for recipe refinement.</p>
-          </div>
-          <span>Open ?</span>
-        </a>
-        <a routerLink="/sales-upload" class="workspace-card blue">
-          <img src="ds/icons/chart-bar-v.svg" alt="" />
-          <div>
-            <strong>Sales Analysis</strong>
-            <p>No sales data yet. Upload 30 days to begin.</p>
-          </div>
-          <span>Upload sales ?</span>
-        </a>
+      <div class="tip-card">
+        <div class="tip-glyph tip-glyph-rp">Rp</div>
+        <div>
+          <div class="tip-title">IDR reference pricing</div>
+          <div class="tip-body">A built-in price list covers ~25 common ingredients at Q2 2025 market rates. Edit any unit cost to match your supplier.</div>
+        </div>
       </div>
-    </article>
+      <div class="tip-card">
+        <div class="tip-glyph tip-glyph-1x">1×</div>
+        <div>
+          <div class="tip-title">Session only</div>
+          <div class="tip-body">PoC — no login, no save. Refresh = clean slate. Export your results to Excel before you close the tab.</div>
+        </div>
+      </div>
+    </div>
+  }
 
-    <article class="panel activity-panel">
-      <div class="panel-head">
-        <h2>Recent activity</h2>
-        <span class="badge">Session-only</span>
+  <!-- Filled state: KPI strip -->
+  @if (hasMenu()) {
+    <div class="kpis">
+      <div class="kpi">
+        <div class="kpi-head">
+          <div class="kpi-ico kpi-ico-orange"><img src="ds/icons/list.svg" alt="" width="16" height="16" /></div>
+          <span class="kpi-label">Menu items</span>
+        </div>
+        <div class="kpi-num">{{ fmtNum(menuItems().length) }}</div>
+        <div class="kpi-sub">{{ readyCount() }} ready · {{ menuItems().length - readyCount() }} pending</div>
       </div>
-      <ul>
-        <li><img src="ds/icons/check.svg" alt="" /> Margin workspace ready</li>
-        <li><img src="ds/icons/upload.svg" alt="" /> Waiting for menu upload</li>
-        <li><img src="ds/icons/data.svg" alt="" /> Sales analysis not started</li>
-      </ul>
-    </article>
-  </section>
+      <div class="kpi">
+        <div class="kpi-head">
+          <div class="kpi-ico kpi-ico-green"><img src="ds/icons/target.svg" alt="" width="16" height="16" /></div>
+          <span class="kpi-label">Avg gross margin</span>
+        </div>
+        <div class="kpi-num">{{ fmtPct(avgMargin()) }}</div>
+        <div class="kpi-sub">Across {{ menuItems().length }} item{{ menuItems().length === 1 ? '' : 's' }}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-head">
+          <div class="kpi-ico kpi-ico-blue"><img src="ds/icons/money.svg" alt="" width="16" height="16" /></div>
+          <span class="kpi-label">{{ hasSales() ? '30-day revenue' : 'Revenue tracked' }}</span>
+        </div>
+        <div class="kpi-num">{{ hasSales() ? fmtIDR(totalRevenue()) : '—' }}</div>
+        <div class="kpi-sub">{{ hasSales() ? 'Period: last 30 days' : 'Upload sales to track' }}</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-head">
+          <div class="kpi-ico kpi-ico-purple"><img src="ds/icons/uptrend.svg" alt="" width="16" height="16" /></div>
+          <span class="kpi-label">Gross profit</span>
+        </div>
+        <div class="kpi-num">{{ hasSales() ? fmtIDR(totalProfit()) : '—' }}</div>
+        <div class="kpi-sub">{{ hasSales() ? fmtPct(overallMargin()) + ' overall margin' : 'Awaiting sales data' }}</div>
+      </div>
+    </div>
+
+    <div class="dash-split">
+      <!-- Workspace panel -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Your workspace</div>
+        </div>
+        <div class="workspace-grid">
+          <button type="button" class="ws-card" (click)="goToMenu()">
+            <div class="ws-card-ico ws-card-ico-orange"><img src="ds/icons/list.svg" alt="" width="20" height="20" /></div>
+            <div class="ws-card-text">
+              <div class="ws-card-title">Menu & Margin</div>
+              <div class="ws-card-body">{{ menuItems().length }} item{{ menuItems().length === 1 ? '' : 's' }}, avg {{ fmtPct(avgMargin()) }} margin</div>
+            </div>
+            <div class="ws-card-cta">Open <img src="ds/icons/arrow-right.svg" alt="" width="14" height="14" /></div>
+          </button>
+          <button type="button" class="ws-card" (click)="goToAnalysis()">
+            <div class="ws-card-ico ws-card-ico-blue"><img src="ds/icons/chart-bar-v.svg" alt="" width="20" height="20" /></div>
+            <div class="ws-card-text">
+              <div class="ws-card-title">Sales Analysis</div>
+              <div class="ws-card-body">{{ hasSales() ? 'Sales data loaded · run analysis' : 'No sales data yet. Upload 30 days to begin.' }}</div>
+            </div>
+            <div class="ws-card-cta">{{ hasSales() ? 'Open' : 'Upload sales' }} <img src="ds/icons/arrow-right.svg" alt="" width="14" height="14" /></div>
+          </button>
+        </div>
+      </div>
+
+      <!-- Activity panel -->
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Recent activity</div>
+          <span class="badge badge-info">Session-only</span>
+        </div>
+        <ul class="activity">
+          <li class="activity-row">
+            <div class="activity-ico activity-ico-green"><img src="ds/icons/check.svg" alt="" width="14" height="14" /></div>
+            <div>
+              <div class="activity-text">Margins estimated for {{ readyCount() }} menu item{{ readyCount() === 1 ? '' : 's' }}</div>
+              <div class="activity-meta">Just now via Claude</div>
+            </div>
+          </li>
+          @if (hasSales()) {
+            <li class="activity-row">
+              <div class="activity-ico activity-ico-blue"><img src="ds/icons/data.svg" alt="" width="14" height="14" /></div>
+              <div>
+                <div class="activity-text">Sales data uploaded — 30 days</div>
+                <div class="activity-meta">Suggestions regenerated</div>
+              </div>
+            </li>
+          }
+          <li class="activity-row">
+            <div class="activity-ico activity-ico-orange"><img src="ds/icons/upload.svg" alt="" width="14" height="14" /></div>
+            <div>
+              <div class="activity-text">Menu loaded</div>
+              <div class="activity-meta">{{ menuItems().length }} items detected</div>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+  }
+
 </div>
-

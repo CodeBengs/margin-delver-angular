@@ -1,10 +1,102 @@
-<app-file-drop-zone
-  title="Upload menu Excel"
-  description="Accepts .xlsx or .xls with Menu Name and Selling Price columns."
-  (fileSelected)="upload($event)"
-/>
-
-@if (message()) {
-  <p>{{ message() }}</p>
+@if (state() === 'idle') {
+  <app-file-drop-zone
+    iconSrc="ds/icons/upload.svg"
+    title="Drop your menu Excel file here"
+    description=".xlsx or .xls · max 5MB · column 1 = Menu Name, column 2 = Selling Price (IDR)"
+    [maxSizeMb]="5"
+    (fileSelected)="onFileSelected($event)"
+    (fileSizeError)="onFileSizeError($event)">
+    <span drop-extra class="drop-or">or</span>
+    <a drop-extra class="link" (click)="$event.stopPropagation(); demoRequested.emit()">Load demo warung data</a>
+  </app-file-drop-zone>
+  @if (sizeError()) {
+    <p class="upload-error">{{ sizeError() }}</p>
+  }
+  @if (isLoading()) {
+    <p class="upload-loading">Parsing file…</p>
+  }
 }
 
+@if (state() === 'preview') {
+  @if (parsedResult(); as result) {
+    @if (hasErrors()) {
+      <app-import-blocked
+        [fileName]="result.fileName"
+        [errorCount]="result.errors.length"
+        [rowsAffected]="rowsAffected()"
+        [totalRows]="result.totalRows"
+        rowsNoun="rows"
+        previewTitle="Preview · Menu"
+        [categories]="categories()"
+        [highlightedCount]="highlightedCount()"
+        (cancel)="onReset()"
+        (reupload)="onReupload()">
+        <table class="ib-table">
+          <thead>
+            <tr>
+              <th class="ib-col-num">#</th>
+              <th>Menu Name</th>
+              <th>Selling Price (IDR)</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of result.rows; track row.rowIndex) {
+              <tr [class.ib-row-bad]="row.nameError || row.priceError">
+                <td class="ib-col-num">{{ row.rowIndex }}</td>
+                <td [class.ib-cell-bad]="row.nameError">
+                  @if (row.name) { <span [class.ib-bad-text]="row.nameError">{{ row.name }}</span> }
+                  @else { <span class="ib-empty">empty</span> }
+                  @if (row.nameError) { <div class="ib-cell-msg">{{ row.nameError }}</div> }
+                </td>
+                <td [class.ib-cell-bad]="row.priceError">
+                  @if (row.priceRaw) { {{ row.price !== null ? (row.price | number) : row.priceRaw }} }
+                  @else { <span class="ib-empty">empty</span> }
+                  @if (row.priceError) { <div class="ib-cell-msg">{{ row.priceError }}</div> }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </app-import-blocked>
+    } @else {
+      @if (result.headerDetected) {
+        <p class="upload-notice">Header row detected and skipped.</p>
+      }
+      @if (result.totalRows > 100) {
+        <div class="upload-warning">
+          Large menu detected ({{ result.totalRows }} items). Processing may take up to 30 seconds.
+        </div>
+      }
+
+      <table class="upload-preview-table">
+        <thead>
+          <tr>
+            <th>Row #</th>
+            <th>Menu Name</th>
+            <th>Selling Price (IDR)</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of result.rows; track row.rowIndex) {
+            <tr>
+              <td>{{ row.rowIndex }}</td>
+              <td>{{ row.name }}</td>
+              <td>{{ row.price !== null ? (row.price | number) : row.priceRaw }}</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+
+      @if (exceedsCap()) {
+        <p class="upload-error">Maximum 20 menu items. You can add up to {{ remainingSlots }} more, but this file adds {{ netNewCount() }} new item(s). Remove rows or existing items.</p>
+      }
+
+      <div class="upload-actions">
+        <button type="button" class="btn btn-primary" [disabled]="!canConfirm()" (click)="onConfirm()">
+          Import {{ netNewCount() }} items
+        </button>
+        <button type="button" class="btn btn-ghost" (click)="onReset()">Cancel</button>
+      </div>
+    }
+  }
+}
