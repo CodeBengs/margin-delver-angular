@@ -75,12 +75,19 @@ const SUGGESTION_LABEL: Record<string, string> = {
 };
 
 const SALES_CATEGORY_LABELS: Record<SalesErrorCategory, string> = {
-  column_not_in_menu: 'Column not in your menu',
-  duplicate_date:     'Duplicate date row',
-  invalid_unit_count: 'Invalid unit count',
-  outside_period:     'Outside the 31-day period'
+  column_not_in_menu:      'Column not in your menu',
+  duplicate_column_header: 'Duplicate column header',
+  duplicate_date:          'Duplicate date row',
+  too_many_rows:           'Too many rows (max 31)',
+  invalid_unit_count:      'Invalid unit count'
 };
-const SALES_CATEGORY_ORDER: SalesErrorCategory[] = ['column_not_in_menu', 'duplicate_date', 'invalid_unit_count', 'outside_period'];
+const SALES_CATEGORY_ORDER: SalesErrorCategory[] = [
+  'column_not_in_menu',
+  'duplicate_column_header',
+  'duplicate_date',
+  'too_many_rows',
+  'invalid_unit_count'
+];
 
 @Component({
   selector: 'app-sales-upload',
