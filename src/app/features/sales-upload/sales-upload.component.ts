@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { DEMO_SALES, DEMO_SUGGESTIONS } from '../../core/demo-data';
@@ -8,6 +8,7 @@ import { AiSuggestion, ItemClassification, ProfitabilityAnalysisResult, Profitab
 import { ExcelParserService, ParsedSalesResult, ParsedSalesRow, SalesErrorCategory } from '../../core/services/excel-parser.service';
 import { ExportService } from '../../core/services/export.service';
 import { SalesService } from '../../core/services/sales.service';
+import { SalesStateService } from '../../core/services/sales-state.service';
 import { FileDropZoneComponent } from '../../shared/components/file-drop-zone/file-drop-zone.component';
 import { ImportBlockedComponent, ImportBlockedCategory } from '../../shared/components/import-blocked/import-blocked.component';
 
@@ -89,6 +90,8 @@ const SALES_CATEGORY_ORDER: SalesErrorCategory[] = ['column_not_in_menu', 'dupli
   styleUrl: './sales-upload.component.scss'
 })
 export class SalesUploadComponent implements OnInit, OnDestroy {
+  private readonly salesState = inject(SalesStateService);
+
   constructor(
     private readonly excelParser: ExcelParserService,
     private readonly salesService: SalesService,
@@ -100,7 +103,8 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
   };
 
   readonly message = signal('');
-  readonly analysisResult = signal<ProfitabilityAnalysisResult | null>(null);
+  readonly analysisResult = this.salesState.analysisResult;
+  readonly periodDays = this.salesState.periodDays;
   readonly menuItems = signal<StoredMenuItem[]>(this.loadMenuItems());
   readonly expandedSugId = signal<number>(0);
   readonly dismissedIds = signal<number[]>([]);
@@ -110,7 +114,6 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
   readonly parsedSales = signal<ParsedSalesResult | null>(null);
   readonly uploadError = signal<string>('');
   readonly showAllRows = signal(false);
-  readonly periodDays = signal(0);
 
   readonly readyItems = computed(() => this.menuItems().filter((i) => i.status === 'ready' && i.est_cost_idr !== null));
   readonly isLocked = computed(() => this.readyItems().length === 0);
@@ -206,7 +209,12 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
 
   readonly classifications: ItemClassification[] = ['star', 'workhorse', 'niche', 'deadweight'];
 
-  ngOnInit(): void  { window.addEventListener('md:load-demo', this.demoListener); }
+  ngOnInit(): void {
+    window.addEventListener('md:load-demo', this.demoListener);
+    if (this.salesState.analysisResult() !== null) {
+      this.uploadState.set('results');
+    }
+  }
   ngOnDestroy(): void { window.removeEventListener('md:load-demo', this.demoListener); }
 
   classColor(c: ItemClassification): string  { return CLASS_COLOR[c]; }
@@ -330,7 +338,7 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
   }
 
   resetAnalysis(): void {
-    this.analysisResult.set(null);
+    this.salesState.clear();
     this.dismissedIds.set([]);
     localStorage.removeItem('md_sales_uploaded_v1');
     this.resetUpload();
