@@ -76,7 +76,7 @@
               <div class="drop-title">Analyzing sales · matching to menu · generating suggestions…</div>
               <div class="drop-sub">Claude is reviewing {{ periodDays() }} days of data against {{ readyItems().length }} menu items.</div>
             </div>
-          } @else {
+          } @else if (uploadState() === 'idle') {
             <!-- File drop zone (rich empty-state design) -->
             <app-file-drop-zone
               iconSrc="ds/icons/data.svg"
