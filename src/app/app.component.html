@@ -36,9 +36,14 @@
       </a>
     </nav>
 
-    <div class="session-card">
-      <strong><span class="session-dot"></span> Session active</strong>
-      <p>Data lives in your browser only. Refresh resets the workspace.</p>
+    <div class="session-card" [class.session-card-error]="storageError()">
+      @if (storageError()) {
+        <strong><span class="session-dot session-dot-error"></span> Storage unavailable</strong>
+        <p>Browser storage is full or disabled. Changes won't persist after refresh.</p>
+      } @else {
+        <strong><span class="session-dot"></span> Session active</strong>
+        <p>Data lives in your browser only. Refresh resets the workspace.</p>
+      }
       @if (hasData()) {
         <button type="button" (click)="resetSession()">Reset session</button>
       }

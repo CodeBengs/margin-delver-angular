@@ -313,7 +313,7 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
         this.uploadState.set('results');
         this.expandedSugId.set(0);
         this.dismissedIds.set([]);
-        localStorage.setItem('md_sales_uploaded_v1', 'true');
+        try { localStorage.setItem('md_sales_uploaded_v1', 'true'); } catch { /* non-critical flag */ }
       },
       error: (err) => {
         this.message.set(err instanceof Error ? err.message : 'Analysis failed. Please try again.');

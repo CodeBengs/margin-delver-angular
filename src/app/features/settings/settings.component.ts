@@ -57,10 +57,12 @@ export class SettingsComponent {
     this.provider() === 'gemini' ? this.geminiConnected() : this.claudeConnected()
   );
 
+  readonly saveError = signal('');
+
   // Provider
   updateProvider(value: 'claude' | 'gemini'): void {
     this.provider.set(value);
-    localStorage.setItem(AI_PROVIDER, value);
+    try { localStorage.setItem(AI_PROVIDER, value); } catch { /* provider still updated in memory */ }
   }
 
   // Claude methods
@@ -69,11 +71,16 @@ export class SettingsComponent {
 
   saveKey(): void {
     const trimmed = this.draftKey().trim();
-    this.savedApiKey.set(trimmed);
-    localStorage.setItem(CLAUDE_KEY, trimmed);
-    localStorage.setItem(CLAUDE_MODEL, this.model());
-    this.savedFlash.set(true);
-    setTimeout(() => this.savedFlash.set(false), 2000);
+    try {
+      localStorage.setItem(CLAUDE_KEY, trimmed);
+      localStorage.setItem(CLAUDE_MODEL, this.model());
+      this.savedApiKey.set(trimmed);
+      this.saveError.set('');
+      this.savedFlash.set(true);
+      setTimeout(() => this.savedFlash.set(false), 2000);
+    } catch {
+      this.saveError.set('Could not save API key to browser storage.');
+    }
   }
 
   removeKey(): void {
@@ -84,7 +91,7 @@ export class SettingsComponent {
 
   updateModel(value: string): void {
     this.model.set(value);
-    localStorage.setItem(CLAUDE_MODEL, value);
+    try { localStorage.setItem(CLAUDE_MODEL, value); } catch { /* model still updated in memory */ }
   }
 
   // Gemini methods
@@ -93,10 +100,15 @@ export class SettingsComponent {
 
   saveGeminiKey(): void {
     const trimmed = this.draftGeminiKey().trim();
-    this.savedGeminiKey.set(trimmed);
-    localStorage.setItem(GEMINI_KEY, trimmed);
-    this.savedGeminiFlash.set(true);
-    setTimeout(() => this.savedGeminiFlash.set(false), 2000);
+    try {
+      localStorage.setItem(GEMINI_KEY, trimmed);
+      this.savedGeminiKey.set(trimmed);
+      this.saveError.set('');
+      this.savedGeminiFlash.set(true);
+      setTimeout(() => this.savedGeminiFlash.set(false), 2000);
+    } catch {
+      this.saveError.set('Could not save API key to browser storage.');
+    }
   }
 
   removeGeminiKey(): void {

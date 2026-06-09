@@ -63,13 +63,15 @@ export class AppComponent {
     window.dispatchEvent(new CustomEvent('md:load-demo'));
   }
 
+  readonly storageError = signal(false);
+
   constructor(private readonly router: Router) {
     this.currentUrl.set(router.url);
     router.events.pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd)).subscribe((event) => {
       this.currentUrl.set(event.urlAfterRedirects);
     });
-    // Re-evaluate hasMenu/hasData whenever any component signals data changed
     window.addEventListener('md:load-demo', () => this._lsRevision.update((n) => n + 1));
+    window.addEventListener('md:storage-error', () => this.storageError.set(true));
   }
 }
 

@@ -472,7 +472,11 @@ export class LandingComponent implements OnInit, OnDestroy {
   }
 
   private persist(): void {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.menuItems()));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.menuItems()));
+    } catch {
+      window.dispatchEvent(new CustomEvent('md:storage-error'));
+    }
     if (localStorage.getItem('md_sales_uploaded_v1') === 'true') {
       this.menuChangedAfterSales.set(true);
     }
