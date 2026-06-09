@@ -61,7 +61,8 @@
   <div class="panel">
     <div class="panel-head">
       <div class="tabs">
-        <button type="button" class="tab" [class.active]="activeTab() === 'upload'" (click)="setTab('upload')">
+        <button type="button" class="tab" [class.active]="activeTab() === 'upload'"
+                [disabled]="atCapacity()" (click)="setTab('upload')">
           <img src="ds/icons/upload.svg" alt="" width="16" height="16" /> Upload Excel
         </button>
         <button type="button" class="tab" [class.active]="activeTab() === 'manual'" (click)="setTab('manual')">
