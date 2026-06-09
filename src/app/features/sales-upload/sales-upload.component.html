@@ -173,7 +173,7 @@
               }
 
               <!-- Preview table -->
-              <div class="preview-table-wrap">
+              <div class="preview-table-wrap" [class.preview-table-wrap-expandable]="parsedSales()!.rows.length > 5">
                 <table class="data-table">
                   <thead>
                     <tr>
@@ -200,22 +200,24 @@
                     }
                   </tbody>
                 </table>
-                @if (parsedSales()!.rows.length > 5) {
+              </div>
+              @if (parsedSales()!.rows.length > 5) {
+                <div class="preview-expand-row">
                   <button type="button" class="link-button" (click)="showAllRows.set(!showAllRows())">
                     {{ showAllRows() ? 'Show less' : 'Show all ' + parsedSales()!.rows.length + ' rows' }}
                   </button>
-                }
-              </div>
+                </div>
+              }
 
               <!-- Actions -->
               <div class="preview-actions">
+                <button type="button" class="btn btn-ghost" (click)="resetUpload()">Cancel</button>
                 <button type="button" class="btn btn-primary"
                         [disabled]="!canAnalyse()"
                         (click)="confirmAndAnalyse()">
                   <span style="font-size:14px">✦</span>
                   Confirm &amp; Analyse
                 </button>
-                <button type="button" class="btn btn-ghost" (click)="resetUpload()">Cancel</button>
               </div>
 
             </div>
