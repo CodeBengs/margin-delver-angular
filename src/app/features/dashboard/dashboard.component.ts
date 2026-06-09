@@ -3,6 +3,7 @@ import { Component, computed, OnDestroy, OnInit, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 
 import { DEMO_MENU as DEMO_MENU_FULL } from '../../core/demo-data';
+import { storageGet, storageRemove, storageSet } from '../../core/utils/storage.util';
 
 interface StoredMenuItem {
   id: number;
@@ -78,9 +79,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   loadDemo(): void {
-    try {
-      localStorage.setItem(MENU_KEY, JSON.stringify(DEMO_MENU_FULL));
-    } catch { /* ignore */ }
+    storageSet(MENU_KEY, JSON.stringify(DEMO_MENU_FULL));
     this.menuItems.set(DEMO_MENU_FULL.map((i) => ({ ...i })));
   }
 
@@ -93,8 +92,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   resetSession(): void {
-    localStorage.removeItem(MENU_KEY);
-    localStorage.removeItem(SALES_KEY);
+    storageRemove(MENU_KEY);
+    storageRemove(SALES_KEY);
     window.location.reload();
   }
 
@@ -113,7 +112,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private loadMenuItems(): StoredMenuItem[] {
     try {
-      const raw = localStorage.getItem(MENU_KEY);
+      const raw = storageGet(MENU_KEY);
       return raw ? (JSON.parse(raw) as StoredMenuItem[]) : [];
     } catch {
       return [];
@@ -122,7 +121,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   private loadSales(): StoredSales {
     try {
-      const raw = localStorage.getItem(SALES_KEY);
+      const raw = storageGet(SALES_KEY);
       return raw ? (JSON.parse(raw) as StoredSales) : {};
     } catch {
       return {};

@@ -3,6 +3,7 @@ import { Component, computed, OnDestroy, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 
 import { DEMO_SALES, DEMO_SUGGESTIONS } from '../../core/demo-data';
+import { storageGet, storageRemove, storageSet } from '../../core/utils/storage.util';
 import { MenuItem } from '../../core/models/menu-item.model';
 import { AiSuggestion, ItemClassification, ProfitabilityAnalysisResult, ProfitabilityItem } from '../../core/models/profitability.model';
 import { ExcelParserService, ParsedSalesResult, ParsedSalesRow, SalesErrorCategory } from '../../core/services/excel-parser.service';
@@ -313,7 +314,7 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
         this.uploadState.set('results');
         this.expandedSugId.set(0);
         this.dismissedIds.set([]);
-        try { localStorage.setItem('md_sales_uploaded_v1', 'true'); } catch { /* non-critical flag */ }
+        storageSet('md_sales_uploaded_v1', 'true');
       },
       error: (err) => {
         this.message.set(err instanceof Error ? err.message : 'Analysis failed. Please try again.');
@@ -332,7 +333,7 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
   resetAnalysis(): void {
     this.analysisResult.set(null);
     this.dismissedIds.set([]);
-    localStorage.removeItem('md_sales_uploaded_v1');
+    storageRemove('md_sales_uploaded_v1');
     this.resetUpload();
   }
 
@@ -359,7 +360,7 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
     this.uploadState.set('results');
     this.expandedSugId.set(0);
     this.dismissedIds.set([]);
-    localStorage.setItem('md_sales_uploaded_v1', 'true');
+    storageSet('md_sales_uploaded_v1', 'true');
   }
 
   private buildDemoItems(): ProfitabilityItem[] {
@@ -437,6 +438,6 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
   trackByIdx(idx: number): number { return idx; }
 
   private loadMenuItems(): StoredMenuItem[] {
-    try { return JSON.parse(localStorage.getItem(MENU_STORAGE_KEY) ?? 'null') ?? []; } catch { return []; }
+    try { return JSON.parse(storageGet(MENU_STORAGE_KEY) ?? 'null') ?? []; } catch { return []; }
   }
 }

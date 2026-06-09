@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { DEMO_MENU } from '../../core/demo-data';
+import { storageGet, storageSet } from '../../core/utils/storage.util';
 import { Ingredient } from '../../core/models/ingredient.model';
 import { MenuItem } from '../../core/models/menu-item.model';
 import { ParsedMenuResult } from '../../core/services/excel-parser.service';
@@ -466,18 +467,17 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   private loadItems(): DraftMenuItem[] {
     try {
-      const items: DraftMenuItem[] = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') ?? [];
+      const items: DraftMenuItem[] = JSON.parse(storageGet(STORAGE_KEY) ?? 'null') ?? [];
       return items.map((i) => ({ ...i, ingredients: i.ingredients ?? [] }));
     } catch { return []; }
   }
 
   private persist(): void {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(this.menuItems()));
-    } catch {
+    const ok = storageSet(STORAGE_KEY, JSON.stringify(this.menuItems()));
+    if (!ok) {
       window.dispatchEvent(new CustomEvent('md:storage-error'));
     }
-    if (localStorage.getItem('md_sales_uploaded_v1') === 'true') {
+    if (storageGet('md_sales_uploaded_v1') === 'true') {
       this.menuChangedAfterSales.set(true);
     }
   }

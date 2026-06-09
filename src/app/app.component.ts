@@ -3,6 +3,7 @@ import { NavigationEnd, Router, RouterLink, RouterLinkActive, RouterOutlet } fro
 import { filter } from 'rxjs';
 
 import { DEMO_MENU } from './core/demo-data';
+import { storageGet, storageRemove, storageSet } from './core/utils/storage.util';
 
 const MENU_KEY = 'md_angular_menu_v1';
 const SALES_KEY = 'md_angular_sales_v1';
@@ -21,8 +22,8 @@ export class AppComponent {
   readonly hasData = computed(() => {
     this._lsRevision();
     try {
-      const menuItems = JSON.parse(localStorage.getItem(MENU_KEY) ?? 'null') ?? [];
-      const salesData = JSON.parse(localStorage.getItem(SALES_KEY) ?? 'null') ?? {};
+      const menuItems = JSON.parse(storageGet(MENU_KEY) ?? 'null') ?? [];
+      const salesData = JSON.parse(storageGet(SALES_KEY) ?? 'null') ?? {};
       return (Array.isArray(menuItems) && menuItems.length > 0) ||
              (typeof salesData === 'object' && salesData !== null && Object.keys(salesData).length > 0);
     } catch {
@@ -33,7 +34,7 @@ export class AppComponent {
   readonly hasMenu = computed(() => {
     this._lsRevision();
     try {
-      const items = JSON.parse(localStorage.getItem(MENU_KEY) ?? 'null') ?? [];
+      const items = JSON.parse(storageGet(MENU_KEY) ?? 'null') ?? [];
       return Array.isArray(items) && items.length > 0;
     } catch {
       return false;
@@ -50,14 +51,14 @@ export class AppComponent {
   });
 
   resetSession(): void {
-    localStorage.removeItem(MENU_KEY);
-    localStorage.removeItem(SALES_KEY);
+    storageRemove(MENU_KEY);
+    storageRemove(SALES_KEY);
     window.location.reload();
   }
 
   loadDemo(): void {
     try {
-      localStorage.setItem(MENU_KEY, JSON.stringify(DEMO_MENU));
+      storageSet(MENU_KEY, JSON.stringify(DEMO_MENU));
     } catch { /* ignore */ }
     // _lsRevision is updated by the constructor listener when this event fires
     window.dispatchEvent(new CustomEvent('md:load-demo'));
