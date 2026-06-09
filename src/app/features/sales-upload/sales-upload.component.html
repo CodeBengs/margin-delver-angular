@@ -19,8 +19,8 @@
         <button type="button" class="btn btn-ghost" (click)="exportFullReport()">
           <img src="ds/icons/data-export.svg" alt="" width="16" height="16" /> Export full report
         </button>
-        <button type="button" class="btn btn-ghost" (click)="resetAnalysis()">
-          <img src="ds/icons/refresh.svg" alt="" width="16" height="16" /> New upload
+        <button type="button" class="btn btn-ghost" (click)="openNewUploadConfirm()">
+          <img src="ds/icons/refresh.svg" alt="" width="16" height="16" /> Upload New Sales
         </button>
       }
     </div>
@@ -487,6 +487,19 @@
       }
     }
 
+  }
+
+  @if (confirmNewUpload()) {
+    <div class="modal-overlay" (click)="cancelNewUpload()">
+      <div class="modal" (click)="$event.stopPropagation()">
+        <div class="modal-title">Start a new upload?</div>
+        <div class="modal-message">This will discard your current analysis results.</div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-ghost" (click)="cancelNewUpload()">Cancel</button>
+          <button type="button" class="btn btn-danger" (click)="confirmAndReset()">Discard &amp; upload new</button>
+        </div>
+      </div>
+    </div>
   }
 
 </div>

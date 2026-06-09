@@ -108,6 +108,7 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
   readonly menuItems = signal<StoredMenuItem[]>(this.loadMenuItems());
   readonly expandedSugId = signal<number>(0);
   readonly dismissedIds = signal<number[]>([]);
+  readonly confirmNewUpload = signal(false);
 
   // Upload state machine
   readonly uploadState = signal<'idle' | 'preview' | 'analyzing' | 'results'>('idle');
@@ -429,6 +430,13 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
       this.menuItems() as unknown as MenuItem[],
       result
     );
+  }
+
+  openNewUploadConfirm(): void { this.confirmNewUpload.set(true); }
+  cancelNewUpload(): void { this.confirmNewUpload.set(false); }
+  confirmAndReset(): void {
+    this.confirmNewUpload.set(false);
+    this.resetAnalysis();
   }
 
   toggleSuggestion(idx: number): void  { this.expandedSugId.set(this.expandedSugId() === idx ? -1 : idx); }
