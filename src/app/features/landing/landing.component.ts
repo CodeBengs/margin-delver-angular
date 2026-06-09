@@ -66,9 +66,9 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   readonly menuChangedAfterSales = signal(false);
 
-  readonly retryAltName: WritableSignal<Record<number, string>> = signal({});
-  readonly retryLoading: WritableSignal<Record<number, boolean>> = signal({});
-  readonly retryError: WritableSignal<Record<number, string>> = signal({});
+  readonly retryAltName: WritableSignal<Partial<Record<number, string>>> = signal({});
+  readonly retryLoading: WritableSignal<Partial<Record<number, boolean>>> = signal({});
+  readonly retryError: WritableSignal<Partial<Record<number, string>>> = signal({});
   readonly failedCount = computed(() => this.menuItems().filter(i => i.status === 'failed').length);
   readonly ingredientErrors = signal<Record<string, string>>({});
 

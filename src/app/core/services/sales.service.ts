@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { map, Observable, throwError } from 'rxjs';
+import { map, Observable } from 'rxjs';
 
 import { MenuItem } from '../models/menu-item.model';
 import {
@@ -81,7 +81,7 @@ export class SalesService {
     const unitsSoldMap = new Map<string, number>();
     for (const row of salesRows) {
       for (const [header, qty] of Object.entries(row.quantities)) {
-        if (qty > 0) {
+        if (qty !== undefined && qty > 0) {
           unitsSoldMap.set(header, (unitsSoldMap.get(header) ?? 0) + qty);
         }
       }
@@ -107,16 +107,6 @@ export class SalesService {
     return this.claudeApi.call({ systemPrompt: SYSTEM_PROMPT, userPrompt, temperature: 0.2, maxTokens: 4096 }).pipe(
       map((text) => this.parseAnalysisResponse(text, menuData))
     );
-  }
-
-  /** @deprecated Use analyseSalesData instead */
-  uploadSales(_sessionKey: string, _file: File): Observable<never> {
-    return throwError(() => new Error('Not implemented'));
-  }
-
-  /** @deprecated Use analyseSalesData instead */
-  analyseSales(_salesUploadId: number): Observable<never> {
-    return throwError(() => new Error('Not implemented'));
   }
 
   private parseAnalysisResponse(
