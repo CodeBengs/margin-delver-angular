@@ -562,7 +562,7 @@
   justify-content: space-between;
   gap: var(--space-4, 12px);
   padding: var(--space-4, 12px);
-  margin: 0 16px var(--space-5, 16px);
+  margin: var(--space-5, 16px) 16px;
   background: var(--color-danger-50, #ffeceb);
   color: var(--color-danger-700, #b30000);
   border-radius: var(--radius-md, 8px);

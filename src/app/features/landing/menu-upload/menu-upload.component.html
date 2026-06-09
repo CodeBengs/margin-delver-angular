@@ -1,19 +1,29 @@
 @if (state() === 'idle') {
-  <app-file-drop-zone
-    iconSrc="ds/icons/upload.svg"
-    title="Drop your menu Excel file here"
-    description=".xlsx or .xls · max 5MB · column 1 = Menu Name, column 2 = Selling Price (IDR)"
-    [maxSizeMb]="5"
-    (fileSelected)="onFileSelected($event)"
-    (fileSizeError)="onFileSizeError($event)">
-    <span drop-extra class="drop-or">or</span>
-    <a drop-extra class="link" (click)="$event.stopPropagation(); demoRequested.emit()">Load demo warung data</a>
-  </app-file-drop-zone>
-  @if (sizeError()) {
-    <p class="upload-error">{{ sizeError() }}</p>
-  }
-  @if (isLoading()) {
-    <p class="upload-loading">Parsing file…</p>
+  @if (remainingSlots === 0) {
+    <div class="drop-disabled">
+      <div class="drop-disabled-glyph">
+        <img src="ds/icons/upload.svg" alt="" width="28" height="28" />
+      </div>
+      <div class="drop-disabled-title">Maximum 20 items reached</div>
+      <div class="drop-disabled-sub">Remove an existing item to upload more.</div>
+    </div>
+  } @else {
+    <app-file-drop-zone
+      iconSrc="ds/icons/upload.svg"
+      title="Drop your menu Excel file here"
+      description=".xlsx or .xls · max 5MB · column 1 = Menu Name, column 2 = Selling Price (IDR)"
+      [maxSizeMb]="5"
+      (fileSelected)="onFileSelected($event)"
+      (fileSizeError)="onFileSizeError($event)">
+      <span drop-extra class="drop-or">or</span>
+      <a drop-extra class="link" (click)="$event.stopPropagation(); demoRequested.emit()">Load demo warung data</a>
+    </app-file-drop-zone>
+    @if (sizeError()) {
+      <p class="upload-error">{{ sizeError() }}</p>
+    }
+    @if (isLoading()) {
+      <p class="upload-loading">Parsing file…</p>
+    }
   }
 }
 
@@ -87,15 +97,24 @@
         </tbody>
       </table>
 
-      @if (exceedsCap()) {
-        <p class="upload-error">Maximum 20 menu items. You can add up to {{ remainingSlots }} more, but this file adds {{ netNewCount() }} new item(s). Remove rows or existing items.</p>
-      }
-
-      <div class="upload-actions">
-        <button type="button" class="btn btn-primary" [disabled]="!canConfirm()" (click)="onConfirm()">
-          Import {{ netNewCount() }} items
-        </button>
-        <button type="button" class="btn btn-ghost" (click)="onReset()">Cancel</button>
+      <div class="upload-footer">
+        <span class="upload-footer-note" [class.upload-footer-note-error]="exceedsCap()">
+          @if (exceedsCap()) {
+            Maximum 20 items. You have {{ remainingSlots }} slot{{ remainingSlots === 1 ? '' : 's' }} left; this file adds {{ netNewCount() }} new item{{ netNewCount() === 1 ? '' : 's' }}. Remove rows or existing items.
+          } @else {
+            {{ netNewCount() }} item{{ netNewCount() === 1 ? '' : 's' }} ready to import.
+          }
+        </span>
+        <div class="upload-footer-actions">
+          <button type="button" class="btn btn-ghost" (click)="onReset()">Cancel</button>
+          @if (exceedsCap()) {
+            <button type="button" class="btn btn-primary" (click)="onReupload()">Upload corrected file</button>
+          } @else {
+            <button type="button" class="btn btn-primary" (click)="onConfirm()">
+              Import {{ netNewCount() }} items
+            </button>
+          }
+        </div>
       </div>
     }
   }
