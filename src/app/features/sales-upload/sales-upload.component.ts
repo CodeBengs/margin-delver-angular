@@ -297,7 +297,7 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
 
     // AC8.6: Guard for no sales recorded
     const totalUnitsCheck = sales.rows.reduce((sum, row) => {
-      return sum + Object.values(row.quantities).reduce((s, q) => s + q, 0);
+      return sum + (Object.values(row.quantities) as number[]).filter(q => q > 0).reduce((s, q) => s + q, 0);
     }, 0);
     if (totalUnitsCheck === 0) {
       this.message.set('No sales recorded for this period. Please check your data.');
