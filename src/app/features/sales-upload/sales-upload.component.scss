@@ -528,6 +528,15 @@
   border: 1px solid var(--border-subtle, #eee);
   border-radius: var(--radius-md, 8px);
 }
+.preview-table-wrap .data-table { table-layout: fixed; }
+.preview-table-wrap .data-table .col-date { width: 110px; }
+.preview-table-wrap .data-table .col-qty {
+  width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
 .preview-table-wrap-expandable {
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
@@ -549,6 +558,19 @@
   gap: var(--space-3, 8px);
   margin-top: var(--space-5, 16px);
 }
+.preview-footer-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4, 12px);
+  flex-wrap: wrap;
+  margin: var(--space-5, 16px) -24px -24px;
+  padding: var(--space-5, 16px) 24px;
+  border-top: 1px solid var(--border-subtle, #ececec);
+  background: var(--color-grey-50, #fafafa);
+}
+.preview-footer-note { font-size: var(--fs-size-12, 12px); color: var(--color-danger-700, #b30000); }
+.preview-footer-actions { display: flex; align-items: center; gap: var(--space-3, 8px); }
 
 /* ===== CELL / ROW ERROR STATES ===== */
 .row-error td {
