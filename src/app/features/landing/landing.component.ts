@@ -40,6 +40,7 @@ export class LandingComponent implements OnInit, OnDestroy {
   readonly manualName = signal('');
   readonly manualPrice = signal<number | null>(null);
   readonly dragOver = signal(false);
+  readonly confirmLoadDemo = signal(false);
   readonly confirmDeleteItem = signal<DraftMenuItem | null>(null);
   readonly confirmDeleteIngredient = signal<{ item: DraftMenuItem; ingIdx: number } | null>(null);
   readonly editingNameId = signal<number | null>(null);
@@ -82,7 +83,18 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   setTab(tab: MenuTab): void { this.activeTab.set(tab); }
 
+  requestLoadDemo(): void {
+    if (this.menuItems().length > 0) {
+      this.confirmLoadDemo.set(true);
+    } else {
+      this.loadDemo();
+    }
+  }
+
+  cancelLoadDemo(): void { this.confirmLoadDemo.set(false); }
+
   loadDemo(): void {
+    this.confirmLoadDemo.set(false);
     this.menuItems.set(JSON.parse(JSON.stringify(DEMO_MENU)) as DraftMenuItem[]);
     this.selectedItemId.set(null);
     this.persist();
