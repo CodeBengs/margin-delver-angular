@@ -1,8 +1,9 @@
 import { CommonModule } from '@angular/common';
-import { Component, computed, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 
 import { DEMO_MENU as DEMO_MENU_FULL } from '../../core/demo-data';
+import { SalesStateService } from '../../core/services/sales-state.service';
 
 interface StoredMenuItem {
   id: number;
@@ -13,12 +14,7 @@ interface StoredMenuItem {
   status: string;
 }
 
-interface StoredSales {
-  [itemName: string]: number;
-}
-
 const MENU_KEY = 'md_angular_menu_v1';
-const SALES_KEY = 'md_angular_sales_v1';
 
 @Component({
   selector: 'app-dashboard',
@@ -28,13 +24,13 @@ const SALES_KEY = 'md_angular_sales_v1';
   styleUrl: './dashboard.component.scss'
 })
 export class DashboardComponent implements OnInit, OnDestroy {
+  private readonly salesState = inject(SalesStateService);
   private demoListener = () => this.loadDemo();
 
   readonly menuItems = signal<StoredMenuItem[]>(this.loadMenuItems());
-  readonly salesData = signal<StoredSales>(this.loadSales());
 
   readonly hasMenu = computed(() => this.menuItems().length > 0);
-  readonly hasSales = computed(() => Object.keys(this.salesData()).length > 0);
+  readonly hasSales = computed(() => this.salesState.analysisResult() !== null);
   readonly readyCount = computed(() => this.menuItems().filter((i) => i.status === 'ready').length);
 
   readonly avgMargin = computed(() => {
@@ -43,29 +39,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return items.reduce((s, i) => s + (i.gross_margin_pct ?? 0), 0) / items.length;
   });
 
-  readonly totalRevenue = computed(() => {
-    const sales = this.salesData();
-    return this.menuItems().reduce((s, m) => {
-      const units = sales[m.name] ?? 0;
-      return s + units * m.selling_price_idr;
-    }, 0);
-  });
-
-  readonly totalCost = computed(() => {
-    const sales = this.salesData();
-    return this.menuItems().reduce((s, m) => {
-      const units = sales[m.name] ?? 0;
-      const cost = m.est_cost_idr ?? 0;
-      return s + units * cost;
-    }, 0);
-  });
-
-  readonly totalProfit = computed(() => this.totalRevenue() - this.totalCost());
-
-  readonly overallMargin = computed(() => {
-    const rev = this.totalRevenue();
-    return rev > 0 ? (this.totalProfit() / rev) * 100 : 0;
-  });
+  readonly totalRevenue = computed(() => this.salesState.analysisResult()?.summary.total_revenue_idr ?? 0);
+  readonly totalCost = computed(() => this.salesState.analysisResult()?.summary.total_cost_idr ?? 0);
+  readonly totalProfit = computed(() => this.salesState.analysisResult()?.summary.total_gross_profit_idr ?? 0);
+  readonly overallMargin = computed(() => this.salesState.analysisResult()?.summary.overall_margin_pct ?? 0);
 
   constructor(private readonly router: Router) {}
 
@@ -94,7 +71,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   resetSession(): void {
     localStorage.removeItem(MENU_KEY);
-    localStorage.removeItem(SALES_KEY);
     window.location.reload();
   }
 
@@ -120,12 +96,4 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  private loadSales(): StoredSales {
-    try {
-      const raw = localStorage.getItem(SALES_KEY);
-      return raw ? (JSON.parse(raw) as StoredSales) : {};
-    } catch {
-      return {};
-    }
-  }
 }

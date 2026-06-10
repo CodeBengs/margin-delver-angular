@@ -29,7 +29,7 @@ export interface ParsedMenuResult {
 }
 
 /* ===== SALES MODEL ===== */
-export type SalesErrorCategory = 'column_not_in_menu' | 'duplicate_date' | 'invalid_unit_count' | 'outside_period';
+export type SalesErrorCategory = 'column_not_in_menu' | 'duplicate_date' | 'invalid_unit_count' | 'too_many_rows' | 'duplicate_column_header';
 
 export interface SalesError {
   category: SalesErrorCategory;
@@ -199,12 +199,27 @@ export class ExcelParserService {
           const headerRow = rawRows[0] as unknown[];
           const columns: ParsedSalesColumn[] = [];
 
+          const seenHeaders = new Set<string>();
           for (let c = 1; c < headerRow.length; c++) {
             const header = String(headerRow[c] ?? '').trim();
             if (!header) continue;
 
+            const headerKey = header.toLowerCase();
+            if (seenHeaders.has(headerKey)) {
+              const column: ParsedSalesColumn = {
+                header,
+                columnIndex: c,
+                matched: false,
+                error: `Column "${header}" appears more than once`
+              };
+              errors.push({ category: 'duplicate_column_header', field: 'column', column: header, message: column.error! });
+              columns.push(column);
+              continue;
+            }
+            seenHeaders.add(headerKey);
+
             const matchedName = knownMenuNames.find(
-              (n) => n.trim().toLowerCase() === header.toLowerCase()
+              (n) => n.trim().toLowerCase() === headerKey
             );
             const column: ParsedSalesColumn = {
               header,
@@ -221,12 +236,6 @@ export class ExcelParserService {
 
           const matchedCount = columns.filter((c) => c.matched).length;
           const unmatchedCount = columns.filter((c) => !c.matched).length;
-
-          // PERIOD = previous calendar month relative to NOW
-          const now = new Date();
-          let pMonth = now.getMonth() - 1;
-          let pYear = now.getFullYear();
-          if (pMonth < 0) { pMonth = 11; pYear -= 1; }
 
           // Data rows start from index 1
           const dataRows = rawRows.slice(1);
@@ -254,32 +263,19 @@ export class ExcelParserService {
               parsedRow.rawCells[col.header] = String(row[col.columnIndex] ?? '').trim();
             }
 
-            // Date checks — pick ONE date error per row (prefer duplicate_date over outside_period)
-            let dateError: string | undefined;
-            let dateCategory: SalesErrorCategory | undefined;
-
+            // Date checks: invalid format (visual only) + duplicate (blocks import)
             if (!dateValid || !date) {
-              dateError = 'Not a valid date';
-              dateCategory = 'outside_period';
+              parsedRow.dateError = 'Not a valid date';
             } else {
-              // Check duplicate first
               const earlier = seenDates.get(dateStr);
               if (earlier !== undefined) {
-                dateError = earlier === rowIndex - 1
+                const dateError = earlier === rowIndex - 1
                   ? `Duplicate of the row above (${dateRaw})`
                   : `Duplicate of row ${earlier} (${dateRaw})`;
-                dateCategory = 'duplicate_date';
-              } else if (date.getMonth() !== pMonth || date.getFullYear() !== pYear) {
-                dateError = 'Outside the 31-day period';
-                dateCategory = 'outside_period';
+                parsedRow.dateError = dateError;
+                errors.push({ category: 'duplicate_date', field: 'date', rowIndex, message: dateError });
               }
-              // Track this date for later duplicate detection
               if (!seenDates.has(dateStr)) seenDates.set(dateStr, rowIndex);
-            }
-
-            if (dateError && dateCategory) {
-              parsedRow.dateError = dateError;
-              errors.push({ category: dateCategory, field: 'date', rowIndex, message: dateError });
             }
 
             // Unit cells — matched columns only
@@ -312,6 +308,14 @@ export class ExcelParserService {
             }
 
             rows.push(parsedRow);
+          }
+
+          if (rows.length > 31) {
+            errors.push({
+              category: 'too_many_rows',
+              field: 'date',
+              message: `Sales file has ${rows.length} rows. Maximum is 31 (one row per day).`
+            });
           }
 
           resolve({
