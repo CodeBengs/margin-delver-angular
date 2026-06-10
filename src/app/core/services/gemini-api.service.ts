@@ -2,6 +2,8 @@ import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { catchError, map, Observable, throwError } from 'rxjs';
 
+import { storageGet } from '../utils/storage.util';
+
 export interface GeminiCallParams {
   systemPrompt: string;
   userPrompt: string;
@@ -22,7 +24,7 @@ export class GeminiApiService {
   constructor(private readonly http: HttpClient) {}
 
   call(params: GeminiCallParams): Observable<string> {
-    const apiKey = localStorage.getItem('md_gemini_api_key_v1');
+    const apiKey = storageGet('md_gemini_api_key_v1');
     if (!apiKey) {
       return throwError(
         () => new Error('Gemini API key not configured. Please add your Google AI API key in Settings.')

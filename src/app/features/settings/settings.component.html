@@ -9,6 +9,9 @@
       </div>
     </div>
     <div class="page-actions">
+      @if (saveError()) {
+        <span class="save-error">{{ saveError() }}</span>
+      }
       <span class="conn-badge" [class.conn-on]="connected()" [class.conn-off]="!connected()">
         <span class="conn-dot"></span>
         {{ connected() ? 'Connected' : 'Not connected' }}

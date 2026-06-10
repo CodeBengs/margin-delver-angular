@@ -52,7 +52,7 @@ export interface ParsedSalesRow {
   date: string;
   dateValid: boolean;
   dateError?: string;                       // message for the date cell, if any
-  quantities: Record<string, number>;       // matched columns only; blanks/invalid stored as 0
+  quantities: Partial<Record<string, number>>;       // matched columns only; blanks/invalid stored as 0
   rawCells: Record<string, string>;          // header -> trimmed raw cell string, ALL columns ('' for empty)
   cellErrors: Record<string, string>;        // header -> message, for matched-column unit cells
 }

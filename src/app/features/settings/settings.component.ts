@@ -1,6 +1,8 @@
 import { CommonModule } from '@angular/common';
 import { Component, computed, signal } from '@angular/core';
 
+import { storageGet, storageRemove, storageSet } from '../../core/utils/storage.util';
+
 const CLAUDE_KEY     = 'md_claude_api_key_v1';
 const CLAUDE_MODEL   = 'md_claude_model_v1';
 const GEMINI_KEY     = 'md_gemini_api_key_v1';
@@ -16,19 +18,19 @@ const AI_PROVIDER    = 'md_ai_provider_v1';
 export class SettingsComponent {
   // Provider
   readonly provider = signal<'claude' | 'gemini'>(
-    (localStorage.getItem(AI_PROVIDER) as 'claude' | 'gemini') ?? 'claude'
+    (storageGet(AI_PROVIDER) as 'claude' | 'gemini') ?? 'claude'
   );
 
   // Claude
-  readonly savedApiKey   = signal(localStorage.getItem(CLAUDE_KEY) || '');
-  readonly draftKey      = signal(localStorage.getItem(CLAUDE_KEY) || '');
-  readonly model         = signal(localStorage.getItem(CLAUDE_MODEL) || 'claude-sonnet-4-6');
+  readonly savedApiKey   = signal(storageGet(CLAUDE_KEY) || '');
+  readonly draftKey      = signal(storageGet(CLAUDE_KEY) || '');
+  readonly model         = signal(storageGet(CLAUDE_MODEL) || 'claude-sonnet-4-6');
   readonly showKey       = signal(false);
   readonly savedFlash    = signal(false);
 
   // Gemini
-  readonly savedGeminiKey  = signal(localStorage.getItem(GEMINI_KEY) || '');
-  readonly draftGeminiKey  = signal(localStorage.getItem(GEMINI_KEY) || '');
+  readonly savedGeminiKey  = signal(storageGet(GEMINI_KEY) || '');
+  readonly draftGeminiKey  = signal(storageGet(GEMINI_KEY) || '');
   readonly showGeminiKey   = signal(false);
   readonly savedGeminiFlash = signal(false);
 
@@ -57,10 +59,12 @@ export class SettingsComponent {
     this.provider() === 'gemini' ? this.geminiConnected() : this.claudeConnected()
   );
 
+  readonly saveError = signal('');
+
   // Provider
   updateProvider(value: 'claude' | 'gemini'): void {
     this.provider.set(value);
-    localStorage.setItem(AI_PROVIDER, value);
+    storageSet(AI_PROVIDER, value);
   }
 
   // Claude methods
@@ -69,22 +73,27 @@ export class SettingsComponent {
 
   saveKey(): void {
     const trimmed = this.draftKey().trim();
-    this.savedApiKey.set(trimmed);
-    localStorage.setItem(CLAUDE_KEY, trimmed);
-    localStorage.setItem(CLAUDE_MODEL, this.model());
-    this.savedFlash.set(true);
-    setTimeout(() => this.savedFlash.set(false), 2000);
+    try {
+      storageSet(CLAUDE_KEY, trimmed);
+      storageSet(CLAUDE_MODEL, this.model());
+      this.savedApiKey.set(trimmed);
+      this.saveError.set('');
+      this.savedFlash.set(true);
+      setTimeout(() => this.savedFlash.set(false), 2000);
+    } catch {
+      this.saveError.set('Could not save API key to browser storage.');
+    }
   }
 
   removeKey(): void {
     this.draftKey.set('');
     this.savedApiKey.set('');
-    localStorage.removeItem(CLAUDE_KEY);
+    storageRemove(CLAUDE_KEY);
   }
 
   updateModel(value: string): void {
     this.model.set(value);
-    localStorage.setItem(CLAUDE_MODEL, value);
+    storageSet(CLAUDE_MODEL, value);
   }
 
   // Gemini methods
@@ -93,15 +102,20 @@ export class SettingsComponent {
 
   saveGeminiKey(): void {
     const trimmed = this.draftGeminiKey().trim();
-    this.savedGeminiKey.set(trimmed);
-    localStorage.setItem(GEMINI_KEY, trimmed);
-    this.savedGeminiFlash.set(true);
-    setTimeout(() => this.savedGeminiFlash.set(false), 2000);
+    try {
+      storageSet(GEMINI_KEY, trimmed);
+      this.savedGeminiKey.set(trimmed);
+      this.saveError.set('');
+      this.savedGeminiFlash.set(true);
+      setTimeout(() => this.savedGeminiFlash.set(false), 2000);
+    } catch {
+      this.saveError.set('Could not save API key to browser storage.');
+    }
   }
 
   removeGeminiKey(): void {
     this.draftGeminiKey.set('');
     this.savedGeminiKey.set('');
-    localStorage.removeItem(GEMINI_KEY);
+    storageRemove(GEMINI_KEY);
   }
 }
