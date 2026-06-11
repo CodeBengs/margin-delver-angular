@@ -15,7 +15,10 @@ interface StoredMenuItem {
   status: string;
 }
 
+type StoredSales = Record<string, unknown>;
+
 const MENU_KEY = 'md_angular_menu_v1';
+const SALES_KEY = 'md_angular_sales_v1';
 
 @Component({
   selector: 'app-dashboard',
