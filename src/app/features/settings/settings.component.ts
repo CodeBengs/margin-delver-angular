@@ -73,16 +73,12 @@ export class SettingsComponent {
 
   saveKey(): void {
     const trimmed = this.draftKey().trim();
-    try {
-      storageSet(CLAUDE_KEY, trimmed);
-      storageSet(CLAUDE_MODEL, this.model());
-      this.savedApiKey.set(trimmed);
-      this.saveError.set('');
-      this.savedFlash.set(true);
-      setTimeout(() => this.savedFlash.set(false), 2000);
-    } catch {
-      this.saveError.set('Could not save API key to browser storage.');
-    }
+    const ok = storageSet(CLAUDE_KEY, trimmed) && storageSet(CLAUDE_MODEL, this.model());
+    if (!ok) { window.dispatchEvent(new CustomEvent('md:storage-error')); return; }
+    this.savedApiKey.set(trimmed);
+    this.saveError.set('');
+    this.savedFlash.set(true);
+    setTimeout(() => this.savedFlash.set(false), 2000);
   }
 
   removeKey(): void {
@@ -102,15 +98,12 @@ export class SettingsComponent {
 
   saveGeminiKey(): void {
     const trimmed = this.draftGeminiKey().trim();
-    try {
-      storageSet(GEMINI_KEY, trimmed);
-      this.savedGeminiKey.set(trimmed);
-      this.saveError.set('');
-      this.savedGeminiFlash.set(true);
-      setTimeout(() => this.savedGeminiFlash.set(false), 2000);
-    } catch {
-      this.saveError.set('Could not save API key to browser storage.');
-    }
+    const ok = storageSet(GEMINI_KEY, trimmed);
+    if (!ok) { window.dispatchEvent(new CustomEvent('md:storage-error')); return; }
+    this.savedGeminiKey.set(trimmed);
+    this.saveError.set('');
+    this.savedGeminiFlash.set(true);
+    setTimeout(() => this.savedGeminiFlash.set(false), 2000);
   }
 
   removeGeminiKey(): void {
