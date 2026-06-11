@@ -103,6 +103,8 @@
   flex: 0 0 64px;
 }
 .locked-icon img { filter: invert(43%) sepia(89%) saturate(1985%) hue-rotate(15deg) brightness(95%) contrast(101%); }
+/* The warning icon ships already coloured (amber + white); don't recolour it. */
+.locked-icon img.keep-color { filter: none; }
 .locked-text { flex: 1; min-width: 0; }
 .locked-title { font: 700 18px/1.3 var(--font-sans, Inter, sans-serif); color: var(--fg-emphasis, #000); }
 .locked-body { font-size: 13.5px; color: var(--fg-muted, #6c6c6c); margin-top: 6px; max-width: 540px; line-height: 1.55; }
