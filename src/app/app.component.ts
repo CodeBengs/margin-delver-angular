@@ -70,8 +70,13 @@ export class AppComponent {
     this.currentUrl.set(router.url);
     router.events.pipe(filter((event): event is NavigationEnd => event instanceof NavigationEnd)).subscribe((event) => {
       this.currentUrl.set(event.urlAfterRedirects);
+      // Re-read storage on navigation so cross-page changes (e.g. sales) update the session card.
+      this._lsRevision.update((n) => n + 1);
     });
+    // Any persisted change — demo load or manual edit — should refresh hasData so the
+    // "Reset session" button appears as soon as there's data in the workspace.
     window.addEventListener('md:load-demo', () => this._lsRevision.update((n) => n + 1));
+    window.addEventListener('md:data-changed', () => this._lsRevision.update((n) => n + 1));
     window.addEventListener('md:storage-error', () => this.storageError.set(true));
   }
 }

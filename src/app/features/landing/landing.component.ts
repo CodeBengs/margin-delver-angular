@@ -514,6 +514,8 @@ export class LandingComponent implements OnInit, OnDestroy {
     if (!ok) {
       window.dispatchEvent(new CustomEvent('md:storage-error'));
     }
+    // Notify the shell so the "Reset session" button reflects the change immediately.
+    window.dispatchEvent(new CustomEvent('md:data-changed'));
     if (storageGet('md_sales_uploaded_v1') === 'true') {
       this.menuChangedAfterSales.set(true);
     }

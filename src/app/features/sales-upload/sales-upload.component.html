@@ -26,8 +26,27 @@
     </div>
   </div>
 
-  @if (isLocked()) {
-    <!-- Locked state — icon | text | button (3-column flex row, matching design) -->
+  @if (hasIncompleteItems()) {
+    <!-- Blocked: one or more menu items still have incomplete ingredients.
+         Checked before isLocked so any incomplete item shows this same message. -->
+    <div class="locked-card">
+      <div class="locked-icon">
+        <img class="keep-color" src="ds/icons/warning.svg" alt="" width="28" height="28" />
+      </div>
+      <div class="locked-text">
+        <div class="locked-title">Menu items incomplete</div>
+        <div class="locked-body">
+          {{ excludedItemCount() }} menu item{{ excludedItemCount() === 1 ? ' has' : 's have' }} ingredients
+          that still need a name, quantity, or unit cost. Complete them on the Menu &amp; Margin
+          page so every item is Ready before running sales analysis.
+        </div>
+      </div>
+      <a routerLink="/menu" class="btn btn-primary">
+        Complete items <img src="ds/icons/arrow-right.svg" alt="" width="16" height="16" />
+      </a>
+    </div>
+  } @else if (isLocked()) {
+    <!-- No ready items and nothing in progress — prompt to build the menu first. -->
     <div class="locked-card">
       <div class="locked-icon">
         <img src="ds/icons/loading.svg" alt="" width="28" height="28" />
@@ -41,24 +60,6 @@
       </div>
       <a routerLink="/menu" class="btn btn-primary">
         Go to Menu &amp; Margin <img src="ds/icons/arrow-right.svg" alt="" width="16" height="16" />
-      </a>
-    </div>
-  } @else if (hasIncompleteItems()) {
-    <!-- Blocked: some items still have ingredients without a price -->
-    <div class="locked-card">
-      <div class="locked-icon">
-        <img src="ds/icons/warning.svg" alt="" width="28" height="28" />
-      </div>
-      <div class="locked-text">
-        <div class="locked-title">Ingredient prices incomplete</div>
-        <div class="locked-body">
-          {{ excludedItemCount() }} menu item{{ excludedItemCount() === 1 ? ' has' : 's have' }} ingredients
-          without a price (not found in the price list). Complete those unit costs on the Menu &amp; Margin
-          page so every item is Ready before running sales analysis.
-        </div>
-      </div>
-      <a routerLink="/menu" class="btn btn-primary">
-        Complete prices <img src="ds/icons/arrow-right.svg" alt="" width="16" height="16" />
       </a>
     </div>
   } @else {
