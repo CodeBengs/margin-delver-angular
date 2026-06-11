@@ -336,7 +336,9 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
         this.uploadState.set('results');
         this.expandedSugId.set(0);
         this.dismissedIds.set([]);
-        storageSet('md_sales_uploaded_v1', 'true');
+        if (!storageSet('md_sales_uploaded_v1', 'true')) {
+          window.dispatchEvent(new CustomEvent('md:storage-error'));
+        }
       },
       error: (err) => {
         this.message.set(err instanceof Error ? err.message : 'Analysis failed. Please try again.');
@@ -383,7 +385,9 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
     this.uploadState.set('results');
     this.expandedSugId.set(0);
     this.dismissedIds.set([]);
-    storageSet('md_sales_uploaded_v1', 'true');
+    if (!storageSet('md_sales_uploaded_v1', 'true')) {
+      window.dispatchEvent(new CustomEvent('md:storage-error'));
+    }
   }
 
   private buildDemoItems(): ProfitabilityItem[] {
