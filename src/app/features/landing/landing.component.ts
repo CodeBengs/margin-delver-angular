@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 
 import { DEMO_MENU } from '../../core/demo-data';
+import { storageGet, storageSet } from '../../core/utils/storage.util';
 import { Ingredient } from '../../core/models/ingredient.model';
 import { MenuItem } from '../../core/models/menu-item.model';
 import { ParsedMenuResult } from '../../core/services/excel-parser.service';
@@ -40,6 +41,7 @@ export class LandingComponent implements OnInit, OnDestroy {
   readonly manualName = signal('');
   readonly manualPrice = signal<number | null>(null);
   readonly dragOver = signal(false);
+  readonly confirmLoadDemo = signal(false);
   readonly confirmDeleteItem = signal<DraftMenuItem | null>(null);
   readonly confirmDeleteIngredient = signal<{ item: DraftMenuItem; ingIdx: number } | null>(null);
   readonly editingNameId = signal<number | null>(null);
@@ -66,9 +68,9 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   readonly menuChangedAfterSales = signal(false);
 
-  readonly retryAltName: WritableSignal<Record<number, string>> = signal({});
-  readonly retryLoading: WritableSignal<Record<number, boolean>> = signal({});
-  readonly retryError: WritableSignal<Record<number, string>> = signal({});
+  readonly retryAltName: WritableSignal<Partial<Record<number, string>>> = signal({});
+  readonly retryLoading: WritableSignal<Partial<Record<number, boolean>>> = signal({});
+  readonly retryError: WritableSignal<Partial<Record<number, string>>> = signal({});
   readonly failedCount = computed(() => this.menuItems().filter(i => i.status === 'failed').length);
   readonly ingredientErrors = signal<Record<string, string>>({});
 
@@ -82,7 +84,18 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   setTab(tab: MenuTab): void { this.activeTab.set(tab); }
 
+  requestLoadDemo(): void {
+    if (this.menuItems().length > 0) {
+      this.confirmLoadDemo.set(true);
+    } else {
+      this.loadDemo();
+    }
+  }
+
+  cancelLoadDemo(): void { this.confirmLoadDemo.set(false); }
+
   loadDemo(): void {
+    this.confirmLoadDemo.set(false);
     this.menuItems.set(JSON.parse(JSON.stringify(DEMO_MENU)) as DraftMenuItem[]);
     this.selectedItemId.set(null);
     this.persist();
@@ -466,14 +479,17 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   private loadItems(): DraftMenuItem[] {
     try {
-      const items: DraftMenuItem[] = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? 'null') ?? [];
+      const items: DraftMenuItem[] = JSON.parse(storageGet(STORAGE_KEY) ?? 'null') ?? [];
       return items.map((i) => ({ ...i, ingredients: i.ingredients ?? [] }));
     } catch { return []; }
   }
 
   private persist(): void {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(this.menuItems()));
-    if (localStorage.getItem('md_sales_uploaded_v1') === 'true') {
+    const ok = storageSet(STORAGE_KEY, JSON.stringify(this.menuItems()));
+    if (!ok) {
+      window.dispatchEvent(new CustomEvent('md:storage-error'));
+    }
+    if (storageGet('md_sales_uploaded_v1') === 'true') {
       this.menuChangedAfterSales.set(true);
     }
   }

@@ -1,4 +1,4 @@
-import { Component, computed, EventEmitter, Input, Output, signal } from '@angular/core';
+import { Component, computed, ElementRef, EventEmitter, Input, Output, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 import { ExcelParserService, MenuErrorCategory, ParsedMenuResult } from '../../../core/services/excel-parser.service';
@@ -75,7 +75,8 @@ export class MenuUploadComponent {
   );
 
   constructor(
-    private readonly excelParser: ExcelParserService
+    private readonly excelParser: ExcelParserService,
+    private readonly el: ElementRef<HTMLElement>
   ) {}
 
   onFileSizeError(msg: string): void {
@@ -108,6 +109,10 @@ export class MenuUploadComponent {
     this.parsedResult.set(null);
     this.sizeError.set('');
     this.isLoading.set(false);
+    requestAnimationFrame(() => {
+      const rect = this.el.nativeElement.getBoundingClientRect();
+      window.scrollTo({ top: Math.max(0, window.scrollY + rect.top - 120), behavior: 'smooth' });
+    });
   }
 
   onReupload(): void {

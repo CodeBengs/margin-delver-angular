@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { map, Observable, throwError } from 'rxjs';
+import { map, Observable } from 'rxjs';
 
 import { MenuItem } from '../models/menu-item.model';
 import {
@@ -10,8 +10,10 @@ import {
   ProfitabilitySummary,
   SuggestionType
 } from '../models/profitability.model';
-import { ParsedSalesRow } from './excel-parser.service';
+import { storageGet } from '../utils/storage.util';
 import { ClaudeApiService } from './claude-api.service';
+import { GeminiApiService } from './gemini-api.service';
+import { ParsedSalesRow } from './excel-parser.service';
 
 const SYSTEM_PROMPT = `You are a restaurant business analyst specialising in Indonesian F&B profitability. You receive a menu with estimated gross margins and 30-day sales data, then return a structured profitability assessment and prioritised action plan.
 
@@ -22,6 +24,8 @@ Rules:
 4. Classify each menu item as one of: star (high margin + high volume), workhorse (low margin + high volume), niche (high margin + low volume), or deadweight (low margin + low volume).
 5. Limit suggestions to a maximum of 5, ordered by estimated impact.
 6. suggestion_type must be one of: bundle, sunset, reprice, promote, ingredient_swap.
+7. estimated_impact must be a short quantitative estimate, max 6 words. Use format: "+ Rp X rb/month" for revenue gains, "- Rp X rb/month" for cost savings, "Rp X rb less waste/month" for efficiency. Use "rb" for thousands, "jt" for millions. No explanatory sentences.
+8. Write all text fields (verdict_summary, description, title, estimated_impact) in English.
 
 Output schema:
 {
@@ -70,7 +74,18 @@ interface MenuDataEntry {
 
 @Injectable({ providedIn: 'root' })
 export class SalesService {
-  constructor(private readonly claudeApi: ClaudeApiService) {}
+  constructor(
+    private readonly claudeApi: ClaudeApiService,
+    private readonly geminiApi: GeminiApiService
+  ) {}
+
+  private callAi(systemPrompt: string, userPrompt: string): Observable<string> {
+    const provider = storageGet('md_ai_provider_v1') ?? 'claude';
+    if (provider === 'gemini') {
+      return this.geminiApi.call({ systemPrompt, userPrompt, temperature: 0.2 });
+    }
+    return this.claudeApi.call({ systemPrompt, userPrompt, temperature: 0.2, maxTokens: 4096 });
+  }
 
   analyseSalesData(
     menuItems: MenuItem[],
@@ -81,7 +96,7 @@ export class SalesService {
     const unitsSoldMap = new Map<string, number>();
     for (const row of salesRows) {
       for (const [header, qty] of Object.entries(row.quantities)) {
-        if (qty > 0) {
+        if (qty !== undefined && qty > 0) {
           unitsSoldMap.set(header, (unitsSoldMap.get(header) ?? 0) + qty);
         }
       }
@@ -104,19 +119,9 @@ export class SalesService {
       `Each item has: menu_item, selling_price_idr, est_cost_idr, gross_margin_pct, units_sold.\n` +
       `Return the profitability assessment and suggestions JSON.`;
 
-    return this.claudeApi.call({ systemPrompt: SYSTEM_PROMPT, userPrompt, temperature: 0.2, maxTokens: 4096 }).pipe(
+    return this.callAi(SYSTEM_PROMPT, userPrompt).pipe(
       map((text) => this.parseAnalysisResponse(text, menuData))
     );
-  }
-
-  /** @deprecated Use analyseSalesData instead */
-  uploadSales(_sessionKey: string, _file: File): Observable<never> {
-    return throwError(() => new Error('Not implemented'));
-  }
-
-  /** @deprecated Use analyseSalesData instead */
-  analyseSales(_salesUploadId: number): Observable<never> {
-    return throwError(() => new Error('Not implemented'));
   }
 
   private parseAnalysisResponse(
@@ -128,7 +133,7 @@ export class SalesService {
       const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
       parsed = JSON.parse(cleaned) as ClaudeAnalysisResponse;
     } catch {
-      throw new Error('Failed to parse analysis response from Claude. Please try again.');
+      throw new Error('Failed to parse analysis response. Please try again.');
     }
 
     // Build classification map from Claude's response

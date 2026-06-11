@@ -48,7 +48,7 @@ export class HowItWorksComponent {
       body: 'Excel file with your menu items + selling price. Or type them in by hand. We accept Indonesian dish names as-is — Nasi Goreng Spesial, Es Cendol, Mie Ayam Ceker.'
     },
     {
-      num: '02', icon: 'sparkles-glyph', title: 'Claude enriches', ai: true,
+      num: '02', icon: 'sparkles-glyph', title: 'AI enriches', ai: true,
       body: 'One API call per dish returns a structured ingredient list in Bahasa Indonesia. Each ingredient is priced against the IDR reference list. Gross margin is computed per item.'
     },
     {
@@ -60,7 +60,7 @@ export class HowItWorksComponent {
       body: 'One calendar month of POS data: dates as rows, menu items as columns, unit counts in cells. We match columns to your menu by name.'
     },
     {
-      num: '05', icon: 'chart-bar-v', title: 'Claude analyses', ai: true,
+      num: '05', icon: 'chart-bar-v', title: 'AI analyses', ai: true,
       body: 'A single second API call returns a profitability verdict, classifies every item as Star/Workhorse/Niche/Deadweight, and produces up to 5 ranked, store-specific suggestions.'
     }
   ];
@@ -134,7 +134,7 @@ Analyse {{PERIOD_DAYS}} days. Menu data:
 
   readonly faqs: FaqItem[] = [
     {
-      q: 'What happens if Claude doesn\'t recognise my dish?',
+      q: 'What happens if the AI doesn\'t recognise my dish?',
       a: 'The item is flagged \'Unrecognised\'. You can retry with an alternative common name (up to 3 times), or add ingredients manually. The rest of your menu still estimates normally — one unrecognised item doesn\'t block the others.'
     },
     {

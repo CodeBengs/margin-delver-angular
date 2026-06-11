@@ -1,9 +1,12 @@
 import { Injectable } from '@angular/core';
 import { catchError, concatMap, from, map, Observable, of, reduce, throwError } from 'rxjs';
 
+import { storageGet } from '../utils/storage.util';
+
 import { Ingredient } from '../models/ingredient.model';
 import { EstimateMarginsResult, MenuItem } from '../models/menu-item.model';
 import { ClaudeApiService } from './claude-api.service';
+import { GeminiApiService } from './gemini-api.service';
 import { IngredientPriceService } from './ingredient-price.service';
 
 interface ClaudeIngredient {
@@ -39,21 +42,28 @@ Output schema:
 export class EnrichmentService {
   constructor(
     private readonly claudeApi: ClaudeApiService,
+    private readonly geminiApi: GeminiApiService,
     private readonly ingredientPrice: IngredientPriceService
   ) {}
+
+  private callAi(systemPrompt: string, userPrompt: string): Observable<string> {
+    const provider = storageGet('md_ai_provider_v1') ?? 'claude';
+    if (provider === 'gemini') {
+      return this.geminiApi.call({ systemPrompt, userPrompt, temperature: 0.2 });
+    }
+    return this.claudeApi.call({ systemPrompt, userPrompt, temperature: 0.2 });
+  }
 
   estimateItem(item: MenuItem): Observable<MenuItem> {
     const userPrompt = `Menu item: "${item.name}"\nSelling price: IDR ${item.selling_price_idr}\nReturn the standard ingredient breakdown for one serving of this dish.`;
 
-    return this.claudeApi
-      .call({ systemPrompt: SYSTEM_PROMPT, userPrompt, temperature: 0.2 })
-      .pipe(
-        map((text) => this.parseAndEnrich(item, text)),
-        catchError((err: unknown) => {
-          const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-          return of({ ...item, status: 'failed' as const, _error: errorMessage });
-        })
-      );
+    return this.callAi(SYSTEM_PROMPT, userPrompt).pipe(
+      map((text) => this.parseAndEnrich(item, text)),
+      catchError((err: unknown) => {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        return of({ ...item, status: 'failed' as const, _error: errorMessage });
+      })
+    );
   }
 
   estimateMargins(items: MenuItem[]): Observable<EstimateMarginsResult> {
@@ -93,15 +103,13 @@ export class EnrichmentService {
   retryLookup(item: MenuItem, alternativeName: string): Observable<MenuItem> {
     const userPrompt = `Menu item: "${alternativeName}"\nSelling price: IDR ${item.selling_price_idr}\nReturn the standard ingredient breakdown for one serving of this dish.`;
 
-    return this.claudeApi
-      .call({ systemPrompt: SYSTEM_PROMPT, userPrompt, temperature: 0.2 })
-      .pipe(
-        map((text) => this.parseAndEnrich({ ...item, alternative_name: alternativeName }, text)),
-        catchError((err: unknown) => {
-          const errorMessage = err instanceof Error ? err.message : 'Unknown error';
-          return of({ ...item, status: 'failed' as const, _error: errorMessage });
-        })
-      );
+    return this.callAi(SYSTEM_PROMPT, userPrompt).pipe(
+      map((text) => this.parseAndEnrich({ ...item, alternative_name: alternativeName }, text)),
+      catchError((err: unknown) => {
+        const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+        return of({ ...item, status: 'failed' as const, _error: errorMessage });
+      })
+    );
   }
 
   private parseAndEnrich(item: MenuItem, responseText: string): MenuItem {

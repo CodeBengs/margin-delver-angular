@@ -29,7 +29,7 @@ export interface ParsedMenuResult {
 }
 
 /* ===== SALES MODEL ===== */
-export type SalesErrorCategory = 'column_not_in_menu' | 'duplicate_date' | 'invalid_unit_count' | 'outside_period';
+export type SalesErrorCategory = 'column_not_in_menu' | 'duplicate_date' | 'invalid_unit_count' | 'too_many_rows' | 'duplicate_column_header';
 
 export interface SalesError {
   category: SalesErrorCategory;
@@ -52,7 +52,7 @@ export interface ParsedSalesRow {
   date: string;
   dateValid: boolean;
   dateError?: string;                       // message for the date cell, if any
-  quantities: Record<string, number>;       // matched columns only; blanks/invalid stored as 0
+  quantities: Partial<Record<string, number>>;       // matched columns only; blanks/invalid stored as 0
   rawCells: Record<string, string>;          // header -> trimmed raw cell string, ALL columns ('' for empty)
   cellErrors: Record<string, string>;        // header -> message, for matched-column unit cells
 }
@@ -109,6 +109,7 @@ export class ExcelParserService {
             const row = dataRows[i] as unknown[];
             const nameRaw = String(row[0] ?? '').trim();
             const priceRaw = String(row[1] ?? '').trim();
+            if (!nameRaw && !priceRaw) continue;
             const rowIndex = i + 1;
 
             const parsedRow: ParsedMenuRow = {
@@ -172,12 +173,12 @@ export class ExcelParserService {
       reader.onload = (e) => {
         try {
           const buffer = e.target?.result as ArrayBuffer;
-          const workbook = XLSX.read(buffer, { type: 'array' });
+          const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
           const sheetName = workbook.SheetNames[0];
           const sheet = workbook.Sheets[sheetName];
           const rawRows = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
             header: 1,
-            raw: false,
+            raw: true,
             defval: ''
           });
 
@@ -199,12 +200,27 @@ export class ExcelParserService {
           const headerRow = rawRows[0] as unknown[];
           const columns: ParsedSalesColumn[] = [];
 
+          const seenHeaders = new Set<string>();
           for (let c = 1; c < headerRow.length; c++) {
             const header = String(headerRow[c] ?? '').trim();
             if (!header) continue;
 
+            const headerKey = header.toLowerCase();
+            if (seenHeaders.has(headerKey)) {
+              const column: ParsedSalesColumn = {
+                header,
+                columnIndex: c,
+                matched: false,
+                error: `Column "${header}" appears more than once`
+              };
+              errors.push({ category: 'duplicate_column_header', field: 'column', column: header, message: column.error! });
+              columns.push(column);
+              continue;
+            }
+            seenHeaders.add(headerKey);
+
             const matchedName = knownMenuNames.find(
-              (n) => n.trim().toLowerCase() === header.toLowerCase()
+              (n) => n.trim().toLowerCase() === headerKey
             );
             const column: ParsedSalesColumn = {
               header,
@@ -222,12 +238,6 @@ export class ExcelParserService {
           const matchedCount = columns.filter((c) => c.matched).length;
           const unmatchedCount = columns.filter((c) => !c.matched).length;
 
-          // PERIOD = previous calendar month relative to NOW
-          const now = new Date();
-          let pMonth = now.getMonth() - 1;
-          let pYear = now.getFullYear();
-          if (pMonth < 0) { pMonth = 11; pYear -= 1; }
-
           // Data rows start from index 1
           const dataRows = rawRows.slice(1);
           const rows: ParsedSalesRow[] = [];
@@ -235,7 +245,17 @@ export class ExcelParserService {
 
           for (let i = 0; i < dataRows.length; i++) {
             const row = dataRows[i] as unknown[];
-            const dateRaw = String(row[0] ?? '').trim();
+            const rawDateCell = row[0];
+            let dateRaw: string;
+            if (rawDateCell instanceof Date) {
+              const d = String(rawDateCell.getDate()).padStart(2, '0');
+              const m = String(rawDateCell.getMonth() + 1).padStart(2, '0');
+              const y = rawDateCell.getFullYear();
+              dateRaw = `${d}/${m}/${y}`;
+            } else {
+              dateRaw = String(rawDateCell ?? '').trim();
+            }
+            if (!dateRaw) continue;
             const rowIndex = i + 1;
 
             const { dateStr, dateValid, date } = this.parseDate(dateRaw);
@@ -254,32 +274,19 @@ export class ExcelParserService {
               parsedRow.rawCells[col.header] = String(row[col.columnIndex] ?? '').trim();
             }
 
-            // Date checks — pick ONE date error per row (prefer duplicate_date over outside_period)
-            let dateError: string | undefined;
-            let dateCategory: SalesErrorCategory | undefined;
-
+            // Date checks: invalid format (visual only) + duplicate (blocks import)
             if (!dateValid || !date) {
-              dateError = 'Not a valid date';
-              dateCategory = 'outside_period';
+              parsedRow.dateError = 'Not a valid date';
             } else {
-              // Check duplicate first
               const earlier = seenDates.get(dateStr);
               if (earlier !== undefined) {
-                dateError = earlier === rowIndex - 1
+                const dateError = earlier === rowIndex - 1
                   ? `Duplicate of the row above (${dateRaw})`
                   : `Duplicate of row ${earlier} (${dateRaw})`;
-                dateCategory = 'duplicate_date';
-              } else if (date.getMonth() !== pMonth || date.getFullYear() !== pYear) {
-                dateError = 'Outside the 31-day period';
-                dateCategory = 'outside_period';
+                parsedRow.dateError = dateError;
+                errors.push({ category: 'duplicate_date', field: 'date', rowIndex, message: dateError });
               }
-              // Track this date for later duplicate detection
               if (!seenDates.has(dateStr)) seenDates.set(dateStr, rowIndex);
-            }
-
-            if (dateError && dateCategory) {
-              parsedRow.dateError = dateError;
-              errors.push({ category: dateCategory, field: 'date', rowIndex, message: dateError });
             }
 
             // Unit cells — matched columns only
@@ -312,6 +319,14 @@ export class ExcelParserService {
             }
 
             rows.push(parsedRow);
+          }
+
+          if (rows.length > 31) {
+            errors.push({
+              category: 'too_many_rows',
+              field: 'date',
+              message: `Sales file has ${rows.length} rows. Maximum is 31 (one row per day).`
+            });
           }
 
           resolve({
@@ -373,6 +388,22 @@ export class ExcelParserService {
         date.getDate() === Number(d)
       ) {
         return { dateStr: `${y}-${m}-${d}`, dateValid: true, date };
+      }
+    }
+
+    // Accept D/M/YYYY with single or double digits (Indonesian convention: day first)
+    const flexSlash = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (flexSlash) {
+      const [, d, m, y] = flexSlash;
+      const date = new Date(Number(y), Number(m) - 1, Number(d));
+      if (
+        date.getFullYear() === Number(y) &&
+        date.getMonth() === Number(m) - 1 &&
+        date.getDate() === Number(d)
+      ) {
+        const ds = String(Number(d)).padStart(2, '0');
+        const ms = String(Number(m)).padStart(2, '0');
+        return { dateStr: `${y}-${ms}-${ds}`, dateValid: true, date };
       }
     }
 
