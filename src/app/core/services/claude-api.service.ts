@@ -34,7 +34,7 @@ export class ClaudeApiService {
     const apiKey = storageGet('md_claude_api_key_v1');
     if (!apiKey) {
       return throwError(
-        () => new Error('API key not configured. Please add your Claude API key in Settings.')
+        () => new Error('API key not configured. Please add your AI API key in Settings.')
       );
     }
 

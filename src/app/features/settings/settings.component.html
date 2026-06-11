@@ -187,7 +187,7 @@
             <input
               id="geminikey"
               [type]="showGeminiKey() ? 'text' : 'password'"
-              placeholder="AIzaSy…"
+              placeholder="Paste your Gemini API key…"
               [value]="draftGeminiKey()"
               (input)="updateDraftGeminiKey($any($event.target).value)"
               spellcheck="false"
@@ -198,16 +198,12 @@
             </button>
           </div>
           <div class="field-foot">
-            @if (draftGeminiKey().trim() === '') {
-              <span class="field-hint">Paste the key that starts with <code>AIza</code>.</span>
-            } @else if (geminiKeyLooksValid()) {
+            @if (draftGeminiKey().trim() !== '') {
               <span class="field-hint field-hint-ok">
                 <img src="ds/icons/check.svg" alt="" width="12" height="12" /> Format looks valid.
               </span>
             } @else {
-              <span class="field-hint field-hint-warn">
-                Key should start with <code>AIza</code>.
-              </span>
+              <span></span>
             }
             <a class="link" href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer">
               <img src="ds/icons/link.svg" alt="" width="13" height="13" /> Get a free key from Google AI Studio

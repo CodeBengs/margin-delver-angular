@@ -300,7 +300,15 @@
 .sug-type-purple { background: var(--color-purple-100, #f0e6ff); color: var(--color-purple-500, #7b2db8); }
 .sug-num { font-size: 10px; opacity: 0.6; font-weight: 700; }
 .sug-title { font: 600 14.5px/1.4 var(--font-sans, Inter, sans-serif); color: var(--fg-emphasis, #000); }
-.sug-impact { font: 600 12.5px/1 var(--font-sans, Inter, sans-serif); color: var(--color-success-700, #0e7a3b); white-space: nowrap; }
+.sug-impact {
+  font: 600 12.5px/1 var(--font-sans, Inter, sans-serif);
+  color: var(--color-success-700, #0e7a3b);
+  max-width: 280px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: right;
+}
 .sug-body { padding: 16px 24px 22px 180px; font-size: 13.5px; color: var(--color-grey-700, #444); line-height: 1.6; }
 .sug-body p { margin: 0; }
 .sug-items {
