@@ -74,7 +74,7 @@
                 <img src="ds/icons/loading.svg" alt="" width="28" height="28" />
               </div>
               <div class="drop-title">Analyzing sales · matching to menu · generating suggestions…</div>
-              <div class="drop-sub">Claude is reviewing {{ periodDays() }} days of data against {{ readyItems().length }} menu items.</div>
+              <div class="drop-sub">Reviewing {{ periodDays() }} days of data against {{ readyItems().length }} menu items.</div>
             </div>
           } @else if (uploadState() === 'idle') {
             <!-- File drop zone (rich empty-state design) -->
@@ -94,7 +94,7 @@
           }
 
           <!-- Preview WITH errors: Import blocked panel -->
-          @if (uploadState() === 'preview' && hasUploadErrors()) {
+          @if (uploadState() === 'preview' && hasUploadErrors() && !hasOnlyRowCapError()) {
             <app-import-blocked
               [fileName]="parsedSales()!.fileName"
               [errorCount]="parsedSales()!.errors.length"
@@ -147,7 +147,7 @@
           }
 
           <!-- Preview WITHOUT errors: clean preview + Confirm & Analyse -->
-          @if (uploadState() === 'preview' && !hasUploadErrors() && parsedSales()) {
+          @if (uploadState() === 'preview' && (!hasUploadErrors() || hasOnlyRowCapError()) && parsedSales()) {
             <div class="upload-preview">
 
               <p class="upload-notice">
@@ -177,10 +177,10 @@
                 <table class="data-table">
                   <thead>
                     <tr>
-                      <th>Date</th>
+                      <th class="col-date">Date</th>
                       @for (col of parsedSales()!.columns; track col.header) {
                         @if (col.matched) {
-                          <th>{{ col.header }}</th>
+                          <th class="col-qty" [title]="col.header">{{ col.header }}</th>
                         }
                       }
                     </tr>
@@ -191,7 +191,7 @@
                         <td>{{ row.date }}</td>
                         @for (col of parsedSales()!.columns; track col.header) {
                           @if (col.matched) {
-                            <td [class.cell-error-highlight]="hasCellError(row, col.header)">
+                            <td class="col-qty" [class.cell-error-highlight]="hasCellError(row, col.header)">
                               {{ row.quantities[col.header] ?? 0 }}
                             </td>
                           }
@@ -210,15 +210,27 @@
               }
 
               <!-- Actions -->
-              <div class="preview-actions">
-                <button type="button" class="btn btn-ghost" (click)="resetUpload()">Cancel</button>
-                <button type="button" class="btn btn-primary"
-                        [disabled]="!canAnalyse()"
-                        (click)="confirmAndAnalyse()">
-                  <span style="font-size:14px">✦</span>
-                  Confirm &amp; Analyse
-                </button>
-              </div>
+              @if (hasOnlyRowCapError()) {
+                <div class="preview-footer-error">
+                  <span class="preview-footer-note">
+                    Your file has {{ parsedSales()!.rows.length }} rows. Maximum is 31 — remove {{ parsedSales()!.rows.length - 31 }} row{{ parsedSales()!.rows.length - 31 === 1 ? '' : 's' }}.
+                  </span>
+                  <div class="preview-footer-actions">
+                    <button type="button" class="btn btn-ghost" (click)="resetUpload()">Cancel</button>
+                    <button type="button" class="btn btn-primary" (click)="onReupload()">Upload corrected file</button>
+                  </div>
+                </div>
+              } @else {
+                <div class="preview-actions">
+                  <button type="button" class="btn btn-ghost" (click)="resetUpload()">Cancel</button>
+                  <button type="button" class="btn btn-primary"
+                          [disabled]="!canAnalyse()"
+                          (click)="confirmAndAnalyse()">
+                    <span style="font-size:14px">✦</span>
+                    Confirm &amp; Analyse
+                  </button>
+                </div>
+              }
 
             </div>
           }
