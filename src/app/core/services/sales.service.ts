@@ -118,7 +118,7 @@ export class SalesService {
       const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
       parsed = JSON.parse(cleaned) as ClaudeAnalysisResponse;
     } catch {
-      throw new Error('Failed to parse analysis response from Claude. Please try again.');
+      throw new Error('Failed to parse analysis response. Please try again.');
     }
 
     // Build classification map from Claude's response

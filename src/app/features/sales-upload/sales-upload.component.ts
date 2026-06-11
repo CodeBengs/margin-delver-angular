@@ -144,6 +144,12 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
 
   readonly hasUploadErrors = computed(() => (this.parsedSales()?.errors.length ?? 0) > 0);
 
+  readonly hasOnlyRowCapError = computed(() => {
+    const s = this.parsedSales();
+    if (!s || s.errors.length === 0) return false;
+    return s.errors.every(e => e.category === 'too_many_rows');
+  });
+
   readonly salesCategories = computed<ImportBlockedCategory[]>(() => {
     const s = this.parsedSales();
     if (!s) return [];
@@ -344,6 +350,7 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
     this.uploadState.set('idle');
     this.uploadError.set('');
     this.showAllRows.set(false);
+    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
   }
 
   resetAnalysis(): void {
