@@ -248,7 +248,7 @@
                                    (input)="setRetryAltName(item.id, $any($event.target).value)"
                                    (keydown.enter)="retryLookup(item)" />
                             <button type="button" class="btn btn-secondary"
-                                    [disabled]="!retryAltName()[item.id].trim() || retryLoading()[item.id]"
+                                    [disabled]="!retryAltName()[item.id]?.trim() || retryLoading()[item.id]"
                                     (click)="retryLookup(item)">
                               {{ retryLoading()[item.id] ? 'Looking up…' : 'Retry lookup' }}
                             </button>
