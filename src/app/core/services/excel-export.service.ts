@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 
 import { MenuItem } from '../models/menu-item.model';
 import { ProfitabilityAnalysisResult } from '../models/profitability.model';
@@ -35,20 +35,32 @@ export class ExcelExportService {
   exportSalesTemplate(menuItemNames: string[]): void {
     const now = new Date();
     const year = now.getFullYear();
-    const month = now.getMonth(); // 0-based
+    const month = now.getMonth();
 
     const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const mm = String(month + 1).padStart(2, '0');
     const dates: string[] = [];
-    for (let d = 1; d <= daysInMonth; d++) {
-      const dd = String(d).padStart(2, '0');
-      const mm = String(month + 1).padStart(2, '0');
-      dates.push(`${dd}/${mm}/${year}`);
+    for (let d = 1; d <= 31; d++) {
+      if (d <= daysInMonth) {
+        dates.push(`${String(d).padStart(2, '0')}/${mm}/${year}`);
+      } else {
+        dates.push('');
+      }
     }
 
     const headerRow = ['Date', ...menuItemNames];
     const dataRows = dates.map((date) => [date, ...menuItemNames.map(() => '')]);
 
     const ws = XLSX.utils.aoa_to_sheet([headerRow, ...dataRows]);
+
+    ws['!cols'] = [
+      { wch: 14 },
+      ...menuItemNames.map(() => ({ wch: 18 }))
+    ];
+
+    // 32 rows (header + 31 data), dataCols = Date + menu items
+    this.applyTemplateFormatting(ws, 32, menuItemNames.length + 1);
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Sales Data');
     const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
@@ -119,14 +131,47 @@ export class ExcelExportService {
   exportMenuTemplate(): void {
     const data: string[][] = [
       ['Menu Name', 'Selling Price (IDR)'],
-      ...Array.from({ length: 10 }, () => ['', ''])
+      ...Array.from({ length: 20 }, () => ['', ''])
     ];
 
     const ws = XLSX.utils.aoa_to_sheet(data);
+
+    ws['!cols'] = [{ wch: 32 }, { wch: 22 }];
+
+    // 21 rows (header + 20 data), 2 columns
+    this.applyTemplateFormatting(ws, 21, 2);
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Menu Template');
     const buf = XLSX.write(wb, { type: 'array', bookType: 'xlsx' }) as ArrayBuffer;
     this.triggerDownload(buf, 'menu-template.xlsx');
+  }
+
+  private applyTemplateFormatting(ws: XLSX.WorkSheet, dataRows: number, dataCols: number): void {
+    const TOTAL_ROWS = dataRows + 30;
+    const TOTAL_COLS = dataCols + 15;
+
+    const gray = { patternType: 'solid', fgColor: { rgb: 'D9D9D9' } };
+    const headerFill = { patternType: 'solid', fgColor: { rgb: 'F2F2F2' } };
+
+    for (let r = 0; r < TOTAL_ROWS; r++) {
+      for (let c = 0; c < TOTAL_COLS; c++) {
+        const ref = XLSX.utils.encode_cell({ r, c });
+        const inData = r < dataRows && c < dataCols;
+
+        if (inData) {
+          if (!ws[ref]) ws[ref] = { t: 's', v: '' };
+          if (r === 0) ws[ref].s = { font: { bold: true }, fill: headerFill };
+        } else {
+          ws[ref] = { t: 's', v: '', s: { fill: gray } };
+        }
+      }
+    }
+
+    ws['!ref'] = XLSX.utils.encode_range({
+      s: { r: 0, c: 0 },
+      e: { r: TOTAL_ROWS - 1, c: TOTAL_COLS - 1 }
+    });
   }
 
   private triggerDownload(buffer: ArrayBuffer, filename: string): void {

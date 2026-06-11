@@ -52,7 +52,7 @@ export interface ParsedSalesRow {
   date: string;
   dateValid: boolean;
   dateError?: string;                       // message for the date cell, if any
-  quantities: Record<string, number>;       // matched columns only; blanks/invalid stored as 0
+  quantities: Partial<Record<string, number>>;       // matched columns only; blanks/invalid stored as 0
   rawCells: Record<string, string>;          // header -> trimmed raw cell string, ALL columns ('' for empty)
   cellErrors: Record<string, string>;        // header -> message, for matched-column unit cells
 }
@@ -109,6 +109,7 @@ export class ExcelParserService {
             const row = dataRows[i] as unknown[];
             const nameRaw = String(row[0] ?? '').trim();
             const priceRaw = String(row[1] ?? '').trim();
+            if (!nameRaw && !priceRaw) continue;
             const rowIndex = i + 1;
 
             const parsedRow: ParsedMenuRow = {
@@ -172,12 +173,12 @@ export class ExcelParserService {
       reader.onload = (e) => {
         try {
           const buffer = e.target?.result as ArrayBuffer;
-          const workbook = XLSX.read(buffer, { type: 'array' });
+          const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
           const sheetName = workbook.SheetNames[0];
           const sheet = workbook.Sheets[sheetName];
           const rawRows = XLSX.utils.sheet_to_json<unknown[]>(sheet, {
             header: 1,
-            raw: false,
+            raw: true,
             defval: ''
           });
 
@@ -244,7 +245,17 @@ export class ExcelParserService {
 
           for (let i = 0; i < dataRows.length; i++) {
             const row = dataRows[i] as unknown[];
-            const dateRaw = String(row[0] ?? '').trim();
+            const rawDateCell = row[0];
+            let dateRaw: string;
+            if (rawDateCell instanceof Date) {
+              const d = String(rawDateCell.getDate()).padStart(2, '0');
+              const m = String(rawDateCell.getMonth() + 1).padStart(2, '0');
+              const y = rawDateCell.getFullYear();
+              dateRaw = `${d}/${m}/${y}`;
+            } else {
+              dateRaw = String(rawDateCell ?? '').trim();
+            }
+            if (!dateRaw) continue;
             const rowIndex = i + 1;
 
             const { dateStr, dateValid, date } = this.parseDate(dateRaw);
@@ -377,6 +388,22 @@ export class ExcelParserService {
         date.getDate() === Number(d)
       ) {
         return { dateStr: `${y}-${m}-${d}`, dateValid: true, date };
+      }
+    }
+
+    // Accept D/M/YYYY with single or double digits (Indonesian convention: day first)
+    const flexSlash = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (flexSlash) {
+      const [, d, m, y] = flexSlash;
+      const date = new Date(Number(y), Number(m) - 1, Number(d));
+      if (
+        date.getFullYear() === Number(y) &&
+        date.getMonth() === Number(m) - 1 &&
+        date.getDate() === Number(d)
+      ) {
+        const ds = String(Number(d)).padStart(2, '0');
+        const ms = String(Number(m)).padStart(2, '0');
+        return { dateStr: `${y}-${ms}-${ds}`, dateValid: true, date };
       }
     }
 

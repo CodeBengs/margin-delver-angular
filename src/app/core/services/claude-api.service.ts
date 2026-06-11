@@ -2,6 +2,8 @@ import { HttpClient, HttpErrorResponse, HttpHeaders } from '@angular/common/http
 import { Injectable } from '@angular/core';
 import { catchError, map, Observable, throwError } from 'rxjs';
 
+import { storageGet } from '../utils/storage.util';
+
 export interface ClaudeCallParams {
   systemPrompt: string;
   userPrompt: string;
@@ -29,7 +31,7 @@ export class ClaudeApiService {
   constructor(private readonly http: HttpClient) {}
 
   call(params: ClaudeCallParams): Observable<string> {
-    const apiKey = localStorage.getItem('md_claude_api_key_v1');
+    const apiKey = storageGet('md_claude_api_key_v1');
     if (!apiKey) {
       return throwError(
         () => new Error('API key not configured. Please add your Claude API key in Settings.')
@@ -38,7 +40,7 @@ export class ClaudeApiService {
 
     const model =
       params.model ??
-      localStorage.getItem('md_claude_model_v1') ??
+      storageGet('md_claude_model_v1') ??
       'claude-sonnet-4-6';
 
     const headers = new HttpHeaders({

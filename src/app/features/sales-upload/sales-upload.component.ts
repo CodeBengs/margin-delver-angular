@@ -3,6 +3,7 @@ import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular
 import { RouterLink } from '@angular/router';
 
 import { DEMO_SALES, DEMO_SUGGESTIONS } from '../../core/demo-data';
+import { storageGet, storageRemove, storageSet } from '../../core/utils/storage.util';
 import { MenuItem } from '../../core/models/menu-item.model';
 import { AiSuggestion, ItemClassification, ProfitabilityAnalysisResult, ProfitabilityItem } from '../../core/models/profitability.model';
 import { ExcelParserService, ParsedSalesResult, ParsedSalesRow, SalesErrorCategory } from '../../core/services/excel-parser.service';
@@ -142,6 +143,12 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
   });
 
   readonly hasUploadErrors = computed(() => (this.parsedSales()?.errors.length ?? 0) > 0);
+
+  readonly hasOnlyRowCapError = computed(() => {
+    const s = this.parsedSales();
+    if (!s || s.errors.length === 0) return false;
+    return s.errors.every(e => e.category === 'too_many_rows');
+  });
 
   readonly salesCategories = computed<ImportBlockedCategory[]>(() => {
     const s = this.parsedSales();
@@ -313,7 +320,7 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
 
     // AC8.6: Guard for no sales recorded
     const totalUnitsCheck = sales.rows.reduce((sum, row) => {
-      return sum + Object.values(row.quantities).reduce((s, q) => s + q, 0);
+      return sum + (Object.values(row.quantities) as number[]).filter(q => q > 0).reduce((s, q) => s + q, 0);
     }, 0);
     if (totalUnitsCheck === 0) {
       this.message.set('No sales recorded for this period. Please check your data.');
@@ -329,7 +336,7 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
         this.uploadState.set('results');
         this.expandedSugId.set(0);
         this.dismissedIds.set([]);
-        localStorage.setItem('md_sales_uploaded_v1', 'true');
+        storageSet('md_sales_uploaded_v1', 'true');
       },
       error: (err) => {
         this.message.set(err instanceof Error ? err.message : 'Analysis failed. Please try again.');
@@ -343,12 +350,13 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
     this.uploadState.set('idle');
     this.uploadError.set('');
     this.showAllRows.set(false);
+    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
   }
 
   resetAnalysis(): void {
     this.salesState.clear();
     this.dismissedIds.set([]);
-    localStorage.removeItem('md_sales_uploaded_v1');
+    storageRemove('md_sales_uploaded_v1');
     this.resetUpload();
   }
 
@@ -375,7 +383,7 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
     this.uploadState.set('results');
     this.expandedSugId.set(0);
     this.dismissedIds.set([]);
-    localStorage.setItem('md_sales_uploaded_v1', 'true');
+    storageSet('md_sales_uploaded_v1', 'true');
   }
 
   private buildDemoItems(): ProfitabilityItem[] {
@@ -460,6 +468,6 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
   trackByIdx(idx: number): number { return idx; }
 
   private loadMenuItems(): StoredMenuItem[] {
-    try { return JSON.parse(localStorage.getItem(MENU_STORAGE_KEY) ?? 'null') ?? []; } catch { return []; }
+    try { return JSON.parse(storageGet(MENU_STORAGE_KEY) ?? 'null') ?? []; } catch { return []; }
   }
 }

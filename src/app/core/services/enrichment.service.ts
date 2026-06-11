@@ -1,6 +1,8 @@
 import { Injectable } from '@angular/core';
 import { catchError, concatMap, from, map, Observable, of, reduce, throwError } from 'rxjs';
 
+import { storageGet } from '../utils/storage.util';
+
 import { Ingredient } from '../models/ingredient.model';
 import { EstimateMarginsResult, MenuItem } from '../models/menu-item.model';
 import { ClaudeApiService } from './claude-api.service';
@@ -45,7 +47,7 @@ export class EnrichmentService {
   ) {}
 
   private callAi(systemPrompt: string, userPrompt: string): Observable<string> {
-    const provider = localStorage.getItem('md_ai_provider_v1') ?? 'claude';
+    const provider = storageGet('md_ai_provider_v1') ?? 'claude';
     if (provider === 'gemini') {
       return this.geminiApi.call({ systemPrompt, userPrompt, temperature: 0.2 });
     }

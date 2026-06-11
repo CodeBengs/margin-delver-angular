@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { map, Observable, throwError } from 'rxjs';
+import { map, Observable } from 'rxjs';
 
 import { MenuItem } from '../models/menu-item.model';
 import {
@@ -81,7 +81,7 @@ export class SalesService {
     const unitsSoldMap = new Map<string, number>();
     for (const row of salesRows) {
       for (const [header, qty] of Object.entries(row.quantities)) {
-        if (qty > 0) {
+        if (qty !== undefined && qty > 0) {
           unitsSoldMap.set(header, (unitsSoldMap.get(header) ?? 0) + qty);
         }
       }
@@ -109,16 +109,6 @@ export class SalesService {
     );
   }
 
-  /** @deprecated Use analyseSalesData instead */
-  uploadSales(_sessionKey: string, _file: File): Observable<never> {
-    return throwError(() => new Error('Not implemented'));
-  }
-
-  /** @deprecated Use analyseSalesData instead */
-  analyseSales(_salesUploadId: number): Observable<never> {
-    return throwError(() => new Error('Not implemented'));
-  }
-
   private parseAnalysisResponse(
     text: string,
     menuData: MenuDataEntry[]
@@ -128,7 +118,7 @@ export class SalesService {
       const cleaned = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
       parsed = JSON.parse(cleaned) as ClaudeAnalysisResponse;
     } catch {
-      throw new Error('Failed to parse analysis response from Claude. Please try again.');
+      throw new Error('Failed to parse analysis response. Please try again.');
     }
 
     // Build classification map from Claude's response
