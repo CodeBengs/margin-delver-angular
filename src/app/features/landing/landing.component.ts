@@ -58,7 +58,8 @@ export class LandingComponent implements OnInit, OnDestroy {
   readonly hasMenu = computed(() => this.menuItems().length > 0);
   readonly readyItems = computed(() => this.menuItems().filter((i) => i.status === 'ready'));
   readonly readyCount = computed(() => this.readyItems().length);
-  readonly hasPendingItems = computed(() => this.menuItems().some((i) => ['draft', 'incomplete'].includes(i.status)));
+  readonly hasPendingItems = computed(() => this.menuItems().some((i) => ['draft', 'incomplete'].includes(i.status) && !i.manualEntry));
+  readonly incompleteCount = computed(() => this.menuItems().filter((i) => i.status === 'incomplete').length);
   readonly totalRevenuePotential = computed(() => this.menuItems().reduce((s, i) => s + i.selling_price_idr, 0));
   readonly totalCost = computed(() => this.menuItems().reduce((s, i) => s + (i.est_cost_idr ?? 0), 0));
   readonly averageMargin = computed(() => {
@@ -72,7 +73,6 @@ export class LandingComponent implements OnInit, OnDestroy {
   readonly retryLoading: WritableSignal<Partial<Record<number, boolean>>> = signal({});
   readonly retryError: WritableSignal<Partial<Record<number, string>>> = signal({});
   readonly failedCount = computed(() => this.menuItems().filter(i => i.status === 'failed').length);
-  readonly ingredientErrors = signal<Record<string, string>>({});
 
   constructor(
     private readonly exportService: ExportService,
@@ -181,8 +181,9 @@ export class LandingComponent implements OnInit, OnDestroy {
     if (!this.hasPendingItems()) return;
     this.processing.set(true);
 
-    // Mark pending items as estimating
-    const pendingItems = this.menuItems().filter(i => ['draft', 'incomplete'].includes(i.status));
+    // Mark pending items as estimating. Skip manually-built items so AI estimation never
+    // overwrites ingredients the user is entering by hand.
+    const pendingItems = this.menuItems().filter(i => ['draft', 'incomplete'].includes(i.status) && !i.manualEntry);
     this.menuItems.update(items =>
       items.map(i => pendingItems.some(p => p.id === i.id) ? { ...i, status: 'estimating' } : i)
     );
@@ -275,9 +276,9 @@ export class LandingComponent implements OnInit, OnDestroy {
   }
 
   switchToManualEntry(item: DraftMenuItem): void {
-    // Reset item to draft with empty ingredients for manual entry
+    // Reset item to draft with empty ingredients for manual entry; flag it so AI estimation skips it.
     this.menuItems.update(items => items.map(cur =>
-      cur.id === item.id ? { ...cur, status: 'draft', ingredients: [], retryCount: 0 } : cur
+      cur.id === item.id ? { ...cur, status: 'draft', ingredients: [], retryCount: 0, manualEntry: true } : cur
     ));
     this.selectedItemId.set(item.id);  // expand ingredient panel
     this.persist();
@@ -314,36 +315,29 @@ export class LandingComponent implements OnInit, OnDestroy {
   }
 
   addIngredient(item: DraftMenuItem): void {
-    const ing: DraftIngredient = { id: Date.now(), name: '', quantity: 0, unit: 'gram', unit_cost_idr: 0, total_cost_idr: 0, cost_source: 'manual' };
-    this.updateItem({ ...item, ingredients: [...item.ingredients, ing] });
+    // Don't stack empty rows: every existing ingredient must be complete before adding another.
+    if (this.hasIncompleteIngredient(item)) {
+      this.selectedItemId.set(item.id);
+      return;
+    }
+    // Quantity and unit cost both default to 0 (shown as "0") and read as "needs a value".
+    const ing: DraftIngredient = { id: Date.now(), name: '', quantity: 0, unit: 'gram', unit_cost_idr: 0, total_cost_idr: 0, cost_source: 'unknown' };
+    this.updateItem({ ...item, manualEntry: true, ingredients: [...item.ingredients, ing] });
   }
 
   updateIngredient(item: DraftMenuItem, ing: DraftIngredient, key: keyof DraftIngredient, value: string | number | null): void {
-    if (key === 'quantity') {
-      const num = Number(value);
-      if (value === '' || value === null || num <= 0) {
-        this.ingredientErrors.update(e => ({ ...e, [`${item.id}_${ing.id}_qty`]: 'Quantity must be greater than 0.' }));
-        return;
-      }
-      this.ingredientErrors.update(e => { const n = { ...e }; delete n[`${item.id}_${ing.id}_qty`]; return n; });
-    }
-
-    if (key === 'unit_cost_idr') {
-      if (value !== null) {
-        const num = Number(value);
-        if (value === '' || num <= 0) {
-          this.ingredientErrors.update(e => ({ ...e, [`${item.id}_${ing.id}_cost`]: 'Unit cost must be greater than 0.' }));
-          return;
-        }
-      }
-      this.ingredientErrors.update(e => { const n = { ...e }; delete n[`${item.id}_${ing.id}_cost`]; return n; });
-    }
-
     const ingredients = item.ingredients.map((cur) => {
       if (cur.id !== ing.id) return cur;
       const upd = { ...cur, [key]: value } as DraftIngredient;
-      upd.quantity = Number(upd.quantity) || 0;
-      upd.unit_cost_idr = upd.unit_cost_idr === null ? null : Number(upd.unit_cost_idr) || 0;
+      // Quantity: keep a positive number, else store 0 (blank / negative / non-numeric) so the
+      // "must be greater than 0" warning is driven by the data itself — even on an untouched field.
+      const numQty = Number(upd.quantity);
+      upd.quantity = Number.isFinite(numQty) && numQty > 0 ? numQty : 0;
+      // Unit cost: a blank, zero, or negative value all mean "no price set yet" → null ("Price needed")
+      // rather than a real Rp 0 cost.
+      const rawCost = upd.unit_cost_idr as number | string | null;
+      const numCost = rawCost === null || rawCost === '' ? NaN : Number(rawCost);
+      upd.unit_cost_idr = Number.isFinite(numCost) && numCost > 0 ? numCost : null;
       upd.total_cost_idr = upd.unit_cost_idr === null ? null : upd.quantity * upd.unit_cost_idr;
       upd.cost_source = upd.unit_cost_idr === null ? 'unknown' : 'manual';
       return upd;
@@ -351,8 +345,39 @@ export class LandingComponent implements OnInit, OnDestroy {
     this.updateItem({ ...item, ingredients });
   }
 
-  ingredientError(itemId: number, ingId: number, field: 'qty' | 'cost'): string {
-    return this.ingredientErrors()[`${itemId}_${ingId}_${field}`] ?? '';
+  isNameMissing(ing: DraftIngredient): boolean {
+    return !ing.name?.trim();
+  }
+
+  isQtyInvalid(ing: DraftIngredient): boolean {
+    return !(Number(ing.quantity) > 0);
+  }
+
+  isPriceMissing(ing: DraftIngredient): boolean {
+    return ing.unit_cost_idr === null || !(ing.unit_cost_idr > 0);
+  }
+
+  isIngredientIncomplete(ing: DraftIngredient): boolean {
+    return this.isNameMissing(ing) || this.isQtyInvalid(ing) || this.isPriceMissing(ing);
+  }
+
+  hasIncompleteIngredient(item: DraftMenuItem): boolean {
+    return item.ingredients.some((i) => this.isIngredientIncomplete(i));
+  }
+
+  incompleteIngredientCount(item: DraftMenuItem): number {
+    return item.ingredients.filter((i) => this.isIngredientIncomplete(i)).length;
+  }
+
+  reviewIncomplete(): void {
+    const first = this.menuItems().find((i) => i.status === 'incomplete');
+    if (!first) return;
+    this.selectedItemId.set(first.id);
+    setTimeout(() => {
+      document
+        .querySelector(`[data-item-id="${first.id}"]`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 50);
   }
 
   marginClass(item: DraftMenuItem): string {
@@ -465,7 +490,7 @@ export class LandingComponent implements OnInit, OnDestroy {
   }
 
   private recalculate(item: DraftMenuItem): DraftMenuItem {
-    const hasUnknown = item.ingredients.some((i) => i.unit_cost_idr === null);
+    const hasIncomplete = item.ingredients.some((i) => this.isIngredientIncomplete(i));
     const cost = item.ingredients.reduce((s, i) => s + (i.total_cost_idr ?? 0), 0);
     const gross = item.selling_price_idr - cost;
     return {
@@ -473,7 +498,7 @@ export class LandingComponent implements OnInit, OnDestroy {
       est_cost_idr: cost,
       gross_margin_idr: gross,
       gross_margin_pct: item.selling_price_idr > 0 ? (gross / item.selling_price_idr) * 100 : 0,
-      status: hasUnknown || item.ingredients.length === 0 ? 'incomplete' : 'ready'
+      status: hasIncomplete || item.ingredients.length === 0 ? 'incomplete' : 'ready'
     };
   }
 

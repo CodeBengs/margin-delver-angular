@@ -54,10 +54,17 @@ export class EnrichmentService {
     return this.claudeApi.call({ systemPrompt, userPrompt, temperature: 0.2 });
   }
 
+  // Prices must be in memory before parseAndEnrich runs its lookups; a failed
+  // load degrades to 'unknown' cost sources instead of failing the estimation.
+  private ensurePricesLoaded(): Observable<void> {
+    return this.ingredientPrice.loadPrices().pipe(catchError(() => of(undefined)));
+  }
+
   estimateItem(item: MenuItem): Observable<MenuItem> {
     const userPrompt = `Menu item: "${item.name}"\nSelling price: IDR ${item.selling_price_idr}\nReturn the standard ingredient breakdown for one serving of this dish.`;
 
-    return this.callAi(SYSTEM_PROMPT, userPrompt).pipe(
+    return this.ensurePricesLoaded().pipe(
+      concatMap(() => this.callAi(SYSTEM_PROMPT, userPrompt)),
       map((text) => this.parseAndEnrich(item, text)),
       catchError((err: unknown) => {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';
@@ -103,7 +110,8 @@ export class EnrichmentService {
   retryLookup(item: MenuItem, alternativeName: string): Observable<MenuItem> {
     const userPrompt = `Menu item: "${alternativeName}"\nSelling price: IDR ${item.selling_price_idr}\nReturn the standard ingredient breakdown for one serving of this dish.`;
 
-    return this.callAi(SYSTEM_PROMPT, userPrompt).pipe(
+    return this.ensurePricesLoaded().pipe(
+      concatMap(() => this.callAi(SYSTEM_PROMPT, userPrompt)),
       map((text) => this.parseAndEnrich({ ...item, alternative_name: alternativeName }, text)),
       catchError((err: unknown) => {
         const errorMessage = err instanceof Error ? err.message : 'Unknown error';

@@ -130,6 +130,8 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
   readonly excludedItemCount = computed(() =>
     this.menuItems().filter(i => i.status === 'incomplete').length
   );
+  // Items with ingredients missing a price block analysis until completed on the menu page.
+  readonly hasIncompleteItems = computed(() => this.excludedItemCount() > 0);
 
   readonly allStar = computed(() => {
     const result = this.analysisResult();

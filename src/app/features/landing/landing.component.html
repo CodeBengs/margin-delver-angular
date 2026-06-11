@@ -14,7 +14,13 @@
           [title]="processing() ? 'Please wait for all items to finish processing before exporting.' : 'Export margins to Excel'">
           <img src="ds/icons/data-export.svg" alt="" width="16" height="16" /> Export .xlsx
         </button>
-        @if (readyCount() > 0) {
+        @if (incompleteCount() > 0) {
+          <button type="button" class="btn btn-secondary" (click)="reviewIncomplete()"
+                  [title]="'Complete the ingredients for ' + incompleteCount() + ' item(s) before uploading sales.'">
+            <img class="btn-warn-icon" src="ds/icons/warning.svg" alt="" width="16" height="16" />
+            Complete {{ incompleteCount() }} item{{ incompleteCount() === 1 ? '' : 's' }}
+          </button>
+        } @else if (readyCount() > 0) {
           <a routerLink="/sales-upload" class="btn btn-primary">
             Upload sales <img src="ds/icons/arrow-right.svg" alt="" width="16" height="16" />
           </a>
@@ -155,6 +161,7 @@
         <tbody>
           @for (item of menuItems(); track item.id) {
             <tr class="row-clickable"
+                [attr.data-item-id]="item.id"
                 [class.row-expanded]="isExpanded(item)"
                 [class.row-danger]="isDanger(item)"
                 (click)="selectItem(item)">
@@ -293,6 +300,17 @@
                       </span>
                     </div>
 
+                    @if (incompleteIngredientCount(item) > 0) {
+                      <div class="price-missing-note">
+                        <img src="ds/icons/warning.svg" alt="" width="14" height="14" />
+                        <span>
+                          <strong>{{ incompleteIngredientCount(item) }} ingredient{{ incompleteIngredientCount(item) === 1 ? '' : 's' }} {{ incompleteIngredientCount(item) === 1 ? 'needs' : 'need' }} completing</strong>
+                          — highlighted below. Fill in the name, quantity, and unit cost for each so this item is
+                          marked Ready before continuing to Sales Analysis.
+                        </span>
+                      </div>
+                    }
+
                     <table class="ingredient-table">
                       <thead>
                         <tr>
@@ -306,20 +324,40 @@
                       </thead>
                       <tbody>
                         @for (ing of item.ingredients; track ing.id; let idx = $index) {
-                          <tr>
-                            <td><input class="cell-input" placeholder="Ingredient name" [ngModel]="ing.name" (ngModelChange)="updateIngredient(item, ing, 'name', $event)" /></td>
+                          <tr [class.row-price-missing]="isPriceMissing(ing)">
+                            <td>
+                              <div class="cell-adorn">
+                                <input class="cell-input"
+                                       [class.cell-input-warning]="isNameMissing(ing)"
+                                       placeholder="Ingredient name" [ngModel]="ing.name" (ngModelChange)="updateIngredient(item, ing, 'name', $event)" />
+                                @if (isNameMissing(ing)) {
+                                  <img class="cell-adorn-icon cell-adorn-icon-right" src="ds/icons/warning.svg" width="14" height="14"
+                                       alt="Name required" title="Ingredient name is required." />
+                                }
+                              </div>
+                            </td>
                             <td class="num-col">
-                              <input class="cell-input cell-input-num" type="number" [ngModel]="ing.quantity" (ngModelChange)="updateIngredient(item, ing, 'quantity', $event)" />
-                              @if (ingredientError(item.id, ing.id, 'qty')) {
-                                <div class="cell-error">{{ ingredientError(item.id, ing.id, 'qty') }}</div>
-                              }
+                              <div class="cell-adorn">
+                                <input class="cell-input cell-input-num" type="number" min="0"
+                                       [class.cell-input-warning]="isQtyInvalid(ing)"
+                                       [ngModel]="ing.quantity" (ngModelChange)="updateIngredient(item, ing, 'quantity', $event)" />
+                                @if (isQtyInvalid(ing)) {
+                                  <img class="cell-adorn-icon" src="ds/icons/warning.svg" width="14" height="14"
+                                       alt="Invalid quantity" title="Quantity must be greater than 0." />
+                                }
+                              </div>
                             </td>
                             <td><input class="cell-input cell-input-unit" [ngModel]="ing.unit" (ngModelChange)="updateIngredient(item, ing, 'unit', $event)" /></td>
                             <td class="num-col">
-                              <input class="cell-input cell-input-num" type="number" [ngModel]="ing.unit_cost_idr" (ngModelChange)="updateIngredient(item, ing, 'unit_cost_idr', $event)" />
-                              @if (ingredientError(item.id, ing.id, 'cost')) {
-                                <div class="cell-error">{{ ingredientError(item.id, ing.id, 'cost') }}</div>
-                              }
+                              <div class="cell-adorn">
+                                <input class="cell-input cell-input-num" type="number" min="0"
+                                       [class.cell-input-warning]="isPriceMissing(ing)"
+                                       [ngModel]="ing.unit_cost_idr" (ngModelChange)="updateIngredient(item, ing, 'unit_cost_idr', $event)" />
+                                @if (isPriceMissing(ing)) {
+                                  <img class="cell-adorn-icon" src="ds/icons/warning.svg" width="14" height="14"
+                                       alt="Price needed" title="Unit cost needed — enter a value greater than 0 to complete this item." />
+                                }
+                              </div>
                             </td>
                             <td class="num-col cell-calc">{{ fmtIDR(ing.total_cost_idr) }}</td>
                             <td>
@@ -335,7 +373,10 @@
                     </table>
 
                     <div class="ingredient-foot">
-                      <button type="button" class="link-button" (click)="addIngredient(item)">
+                      <button type="button" class="link-button"
+                              [disabled]="hasIncompleteIngredient(item)"
+                              [title]="hasIncompleteIngredient(item) ? 'Complete the current ingredient (name, quantity, and unit cost) before adding another.' : 'Add another ingredient'"
+                              (click)="addIngredient(item)">
                         <img src="ds/icons/plus.svg" alt="" width="12" height="12" /> Add ingredient
                       </button>
                       <div class="ingredient-foot-note">Edits recalculate margin instantly. Unit costs come from the built-in IDR reference list.</div>

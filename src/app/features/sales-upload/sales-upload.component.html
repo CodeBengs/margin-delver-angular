@@ -43,6 +43,24 @@
         Go to Menu &amp; Margin <img src="ds/icons/arrow-right.svg" alt="" width="16" height="16" />
       </a>
     </div>
+  } @else if (hasIncompleteItems()) {
+    <!-- Blocked: some items still have ingredients without a price -->
+    <div class="locked-card">
+      <div class="locked-icon">
+        <img src="ds/icons/warning.svg" alt="" width="28" height="28" />
+      </div>
+      <div class="locked-text">
+        <div class="locked-title">Ingredient prices incomplete</div>
+        <div class="locked-body">
+          {{ excludedItemCount() }} menu item{{ excludedItemCount() === 1 ? ' has' : 's have' }} ingredients
+          without a price (not found in the price list). Complete those unit costs on the Menu &amp; Margin
+          page so every item is Ready before running sales analysis.
+        </div>
+      </div>
+      <a routerLink="/menu" class="btn btn-primary">
+        Complete prices <img src="ds/icons/arrow-right.svg" alt="" width="16" height="16" />
+      </a>
+    </div>
   } @else {
 
     <!-- Context banner -->

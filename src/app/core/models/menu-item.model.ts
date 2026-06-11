@@ -19,6 +19,8 @@ export interface MenuItem {
   ingredients?: Ingredient[];
   retryCount?: number;
   _error?: string;
+  /** Set once the user hand-edits ingredients, so AI "Estimate margins" won't overwrite their work. */
+  manualEntry?: boolean;
 }
 
 export interface MenuUploadResult {
