@@ -24,23 +24,6 @@ Install dependencies:
 - Open new terminal as Administrator
 - Install packages using `npm install` command
 
-### API URL Setup
-
-Open & edit file [proxy.conf.json](proxy.conf.json):
-
-```json
-{
-  "/internal/v1": {
-    "target": "{backendUrl}",
-    "secure": false,
-    "changeOrigin": true,
-    "logLevel": "debug"
-  }
-}
-```
-
-Replace `{backendUrl}` with the backend API URL (default: `http://localhost:3030`).
-
 ### Run the Application
 
 ```bash
@@ -65,12 +48,3 @@ npm run build
 
 **Client:** Angular 19, RxJS, SCSS (Pujasera Design System)
 
-**Server:** Go, REST API at `/internal/v1`
-
----
-
-## Related
-
-Here are some related projects:
-
-- [Margin Delver Backend](https://github.com/CodeBengs/margin-delver)
