@@ -1,1 +1,0 @@
-import{S as a,oa as t}from"./chunk-DWER3OO5.js";var l=class i{analysisResult=t(null);periodDays=t(0);clear(){this.analysisResult.set(null),this.periodDays.set(0)}static \u0275fac=function(e){return new(e||i)};static \u0275prov=a({token:i,factory:i.\u0275fac,providedIn:"root"})};export{l as a};
