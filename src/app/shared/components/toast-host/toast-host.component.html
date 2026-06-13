@@ -1,0 +1,13 @@
+<div class="toast-stack" aria-live="polite" aria-atomic="false">
+  @for (toast of toasts(); track toast.id) {
+    <div class="toast toast-{{ toast.type }}" role="status">
+      <span class="toast-message">{{ toast.message }}</span>
+      @if (toast.action) {
+        <a class="toast-action" [routerLink]="toast.action.route" (click)="dismiss(toast.id)">
+          {{ toast.action.label }}
+        </a>
+      }
+      <button type="button" class="toast-close" aria-label="Dismiss" (click)="dismiss(toast.id)">×</button>
+    </div>
+  }
+</div>

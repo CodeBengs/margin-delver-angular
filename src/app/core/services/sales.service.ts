@@ -10,7 +10,7 @@ import {
   ProfitabilitySummary,
   SuggestionType
 } from '../models/profitability.model';
-import { storageGet } from '../utils/storage.util';
+import { getActiveProvider } from '../utils/ai-config.util';
 import { ClaudeApiService } from './claude-api.service';
 import { GeminiApiService } from './gemini-api.service';
 import { ParsedSalesRow } from './excel-parser.service';
@@ -80,8 +80,7 @@ export class SalesService {
   ) {}
 
   private callAi(systemPrompt: string, userPrompt: string): Observable<string> {
-    const provider = storageGet('md_ai_provider_v1') ?? 'claude';
-    if (provider === 'gemini') {
+    if (getActiveProvider() === 'gemini') {
       return this.geminiApi.call({ systemPrompt, userPrompt, temperature: 0.2 });
     }
     return this.claudeApi.call({ systemPrompt, userPrompt, temperature: 0.2, maxTokens: 4096 });

@@ -4,6 +4,7 @@ import { filter } from 'rxjs';
 
 import { DEMO_MENU } from './core/demo-data';
 import { storageGet, storageRemove, storageSet } from './core/utils/storage.util';
+import { ToastHostComponent } from './shared/components/toast-host/toast-host.component';
 
 const MENU_KEY = 'md_angular_menu_v1';
 const SALES_KEY = 'md_angular_sales_v1';
@@ -11,7 +12,7 @@ const SALES_KEY = 'md_angular_sales_v1';
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive, ToastHostComponent],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })
@@ -49,6 +50,16 @@ export class AppComponent {
     if (url.startsWith('/settings')) return 'Settings';
     return 'Dashboard';
   });
+
+  readonly confirmReset = signal(false);
+
+  requestReset(): void {
+    this.confirmReset.set(true);
+  }
+
+  cancelReset(): void {
+    this.confirmReset.set(false);
+  }
 
   resetSession(): void {
     storageRemove(MENU_KEY);

@@ -71,6 +71,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.router.navigate(['/sales-upload']);
   }
 
+  readonly confirmReset = signal(false);
+
+  requestReset(): void {
+    this.confirmReset.set(true);
+  }
+
+  cancelReset(): void {
+    this.confirmReset.set(false);
+  }
+
   resetSession(): void {
     storageRemove(MENU_KEY);
     storageRemove(SALES_KEY);

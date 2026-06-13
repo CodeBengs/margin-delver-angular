@@ -10,6 +10,8 @@ import { MenuItem } from '../../core/models/menu-item.model';
 import { ParsedMenuResult } from '../../core/services/excel-parser.service';
 import { ExportService } from '../../core/services/export.service';
 import { EnrichmentService } from '../../core/services/enrichment.service';
+import { ToastService } from '../../core/services/toast.service';
+import { hasActiveApiKey, providerLabel } from '../../core/utils/ai-config.util';
 import { MenuUploadComponent } from './menu-upload/menu-upload.component';
 
 type MenuTab = 'upload' | 'manual';
@@ -76,7 +78,8 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   constructor(
     private readonly exportService: ExportService,
-    private readonly enrichmentService: EnrichmentService
+    private readonly enrichmentService: EnrichmentService,
+    private readonly toast: ToastService
   ) {}
 
   ngOnInit(): void { window.addEventListener('md:load-demo', this.demoListener); }
@@ -179,6 +182,16 @@ export class LandingComponent implements OnInit, OnDestroy {
 
   estimateMargins(): void {
     if (!this.hasPendingItems()) return;
+
+    // Require an API key before calling the AI — notify and bail out otherwise.
+    if (!hasActiveApiKey()) {
+      this.toast.show(`Add your ${providerLabel()} API key in Settings to estimate margins.`, {
+        type: 'warning',
+        action: { label: 'Open Settings', route: '/settings' }
+      });
+      return;
+    }
+
     this.processing.set(true);
 
     // Mark pending items as estimating. Skip manually-built items so AI estimation never

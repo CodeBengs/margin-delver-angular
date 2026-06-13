@@ -27,7 +27,7 @@
             <img src="ds/icons/arrow-right.svg" alt="" width="16" height="16" />
             {{ hasSales() ? 'Open analysis' : 'Continue to menu & margins' }}
           </button>
-          <button type="button" class="btn btn-ghost" (click)="resetSession()">Reset session</button>
+          <button type="button" class="btn btn-ghost" (click)="requestReset()">Reset session</button>
         }
       </div>
     </div>
@@ -196,3 +196,16 @@
   }
 
 </div>
+
+@if (confirmReset()) {
+  <div class="modal-overlay" (click)="cancelReset()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal-title">Reset session?</div>
+      <div class="modal-message">This will permanently clear your menu and sales data from this browser.</div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" (click)="cancelReset()">Cancel</button>
+        <button type="button" class="btn btn-danger" (click)="resetSession()">Reset session</button>
+      </div>
+    </div>
+  </div>
+}

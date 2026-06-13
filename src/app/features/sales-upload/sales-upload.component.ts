@@ -6,10 +6,11 @@ import { DEMO_SALES, DEMO_SUGGESTIONS } from '../../core/demo-data';
 import { storageGet, storageRemove, storageSet } from '../../core/utils/storage.util';
 import { MenuItem } from '../../core/models/menu-item.model';
 import { AiSuggestion, ItemClassification, ProfitabilityAnalysisResult, ProfitabilityItem } from '../../core/models/profitability.model';
-import { ExcelParserService, ParsedSalesResult, ParsedSalesRow, SalesErrorCategory } from '../../core/services/excel-parser.service';
+import { ExcelParserService, ParsedSalesRow, SalesErrorCategory } from '../../core/services/excel-parser.service';
 import { ExportService } from '../../core/services/export.service';
-import { SalesService } from '../../core/services/sales.service';
 import { SalesStateService } from '../../core/services/sales-state.service';
+import { ToastService } from '../../core/services/toast.service';
+import { hasActiveApiKey, providerLabel } from '../../core/utils/ai-config.util';
 import { FileDropZoneComponent } from '../../shared/components/file-drop-zone/file-drop-zone.component';
 import { ImportBlockedComponent, ImportBlockedCategory } from '../../shared/components/import-blocked/import-blocked.component';
 
@@ -99,10 +100,10 @@ const SALES_CATEGORY_ORDER: SalesErrorCategory[] = [
 })
 export class SalesUploadComponent implements OnInit, OnDestroy {
   private readonly salesState = inject(SalesStateService);
+  private readonly toast = inject(ToastService);
 
   constructor(
     private readonly excelParser: ExcelParserService,
-    private readonly salesService: SalesService,
     private readonly exportService: ExportService
   ) {}
 
@@ -110,17 +111,18 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
     this.menuItems.set(this.loadMenuItems());
   };
 
-  readonly message = signal('');
+  // Backed by the root SalesStateService so an in-flight analysis and the parsed
+  // preview survive navigation away from and back to this page.
+  readonly message = this.salesState.analysisMessage;
   readonly analysisResult = this.salesState.analysisResult;
   readonly periodDays = this.salesState.periodDays;
+  readonly uploadState = this.salesState.uploadState;
+  readonly parsedSales = this.salesState.parsedSales;
   readonly menuItems = signal<StoredMenuItem[]>(this.loadMenuItems());
   readonly expandedSugId = signal<number>(0);
   readonly dismissedIds = signal<number[]>([]);
   readonly confirmNewUpload = signal(false);
 
-  // Upload state machine
-  readonly uploadState = signal<'idle' | 'preview' | 'analyzing' | 'results'>('idle');
-  readonly parsedSales = signal<ParsedSalesResult | null>(null);
   readonly uploadError = signal<string>('');
   readonly showAllRows = signal(false);
 
@@ -228,9 +230,8 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     window.addEventListener('md:load-demo', this.demoListener);
-    if (this.salesState.analysisResult() !== null) {
-      this.uploadState.set('results');
-    }
+    // No state rehydration needed: uploadState/parsedSales/result live in the root
+    // service, so whatever was in progress (or completed) renders as-is.
   }
   ngOnDestroy(): void { window.removeEventListener('md:load-demo', this.demoListener); }
 
@@ -312,6 +313,15 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
     const sales = this.parsedSales();
     if (!sales || !this.canAnalyse()) return;
 
+    // Require an API key before calling the AI — notify and bail out otherwise.
+    if (!hasActiveApiKey()) {
+      this.toast.show(`Add your ${providerLabel()} API key in Settings to analyse sales.`, {
+        type: 'warning',
+        action: { label: 'Open Settings', route: '/settings' }
+      });
+      return;
+    }
+
     // AC9.6: Guard for fewer than 3 ready menu items
     const menuItems = this.readyItems() as unknown as MenuItem[];
     if (menuItems.length < 3) {
@@ -330,28 +340,15 @@ export class SalesUploadComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.uploadState.set('analyzing');
-    this.message.set('');
-    this.salesService.analyseSalesData(menuItems, sales.rows, this.periodDays()).subscribe({
-      next: (result) => {
-        this.analysisResult.set(result);
-        this.uploadState.set('results');
-        this.expandedSugId.set(0);
-        this.dismissedIds.set([]);
-        if (!storageSet('md_sales_uploaded_v1', 'true')) {
-          window.dispatchEvent(new CustomEvent('md:storage-error'));
-        }
-      },
-      error: (err) => {
-        this.message.set(err instanceof Error ? err.message : 'Analysis failed. Please try again.');
-        this.uploadState.set('preview');
-      }
-    });
+    this.expandedSugId.set(0);
+    this.dismissedIds.set([]);
+    // Hand off to the root service so the analysis keeps running asynchronously
+    // even if the user navigates away before it completes.
+    this.salesState.runAnalysis(menuItems, sales.rows, this.periodDays());
   }
 
   resetUpload(): void {
-    this.parsedSales.set(null);
-    this.uploadState.set('idle');
+    this.salesState.resetUpload();
     this.uploadError.set('');
     this.showAllRows.set(false);
     requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: 'smooth' }));
